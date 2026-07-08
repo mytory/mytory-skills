@@ -113,6 +113,21 @@
 
 </details>
 
+## 📋 출처
+
+각 스킬의 원본 저장소와 저자입니다.
+
+| 출처 | 스킬 |
+|------|------|
+| [mattpocock/skills](https://github.com/mattpocock/skills) (24개) | caveman, design-an-interface, diagnose, edit-article, grill-me, grill-with-docs, handoff, improve-codebase-architecture, issue(원명:qa), obsidian-vault, prototype, request-refactor-plan, review, scaffold-exercises, setup-matt-pocock-skills, setup-pre-commit, tdd, teach, to-issues, to-prd, triage, ubiquitous-language, write-a-skill, zoom-out |
+| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (13개) | brandkit, design-taste-frontend, design-taste-frontend-v1, full-output-enforcement, gpt-taste, high-end-visual-design, image-to-code, imagegen-frontend-mobile, imagegen-frontend-web, industrial-brutalist-ui, minimalist-ui, redesign-existing-projects, stitch-design-taste |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | agent-browser |
+| [vercel-labs/skills](https://github.com/vercel-labs/skills) | find-skills |
+| [anthropics/skills](https://github.com/anthropics/skills) | frontend-design |
+| [ctxrs/ctx](https://github.com/ctxrs/ctx) | ctx-agent-history-search |
+| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) | open-code-review |
+| [deusyu/translate-book](https://github.com/deusyu/translate-book) | translate-book |
+
 ## 🔗 관련 링크
 
 - GitHub: https://github.com/mytory/mytory-skills
