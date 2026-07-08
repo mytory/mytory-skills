@@ -1,18 +1,15 @@
 ---
 name: open-code-review
 description: >
-  Performs AI-powered code review on Git changes using the `ocr` CLI from
-  alibaba/open-code-review. Use when the user asks to review code, review
-  a pull request, review staged/unstaged changes, review a commit, or
-  compare branches for code quality issues. Produces line-level review
-  comments and can automatically apply fixes when requested. With appropriate
-  review rules, can detect various types of issues including bugs, security
-  vulnerabilities, performance problems, and code quality concerns.
+  `ocr` CLI(alibaba/open-code-review)를 사용하여 Git 변경사항에 대해 AI 기반 코드
+  리뷰를 수행합니다. 사용자가 코드 리뷰, 풀 리퀘스트 리뷰, 스테이징/언스테이징 변경사항
+  리뷰, 특정 커밋 리뷰, 또는 브랜치 간 비교를 요청할 때 사용합니다. 라인 단위 리뷰
+  코멘트를 생성하고 요청 시 자동 수정을 적용할 수 있습니다. 적절한 리뷰 규칙과 함께
+  버그, 보안 취약점, 성능 문제, 코드 품질 우려 등 다양한 유형의 이슈를 탐지할 수 있습니다.
 license: Apache-2.0
 compatibility: >
-  Requires the `ocr` CLI installed (via `npm install -g
-  @alibaba-group/open-code-review` or GitHub release binary). Requires a
-  configured LLM (Anthropic or OpenAI-compatible) before first run.
+  `ocr` CLI 설치 필요(`npm install -g @alibaba-group/open-code-review` 또는 GitHub
+  릴리스 바이너리). 첫 실행 전에 LLM(Anthropic 또는 OpenAI 호환) 설정이 필요합니다.
 metadata:
   author: alibaba
   homepage: https://github.com/alibaba/open-code-review
@@ -21,29 +18,30 @@ metadata:
 
 # Open Code Review
 
-A skill for invoking [open-code-review](https://github.com/alibaba/open-code-review) (`ocr`) — an open-source AI code review CLI that reads Git diffs and generates structured, line-level review comments.
+[open-code-review](https://github.com/alibaba/open-code-review)(`ocr`)를 호출하는 스킬입니다.
+오픈소스 AI 코드 리뷰 CLI로, Git diff를 읽고 구조화된 라인 단위 리뷰 코멘트를 생성합니다.
 
-## Prerequisites check
+## 사전 준비 확인
 
-Before starting a review, verify the environment:
+리뷰를 시작하기 전에 환경을 확인하세요:
 
 ```bash
-# 1. Check the CLI is installed
-which ocr || echo "NOT INSTALLED"
+# 1. CLI 설치 확인
+which ocr || echo "설치되지 않음"
 
-# 2. Verify LLM connectivity
+# 2. LLM 연결 확인
 ocr llm test
 ```
 
-If `ocr` is not installed, install it first:
+`ocr`이 설치되지 않았다면 먼저 설치합니다:
 
 ```bash
 npm install -g @alibaba-group/open-code-review
 ```
 
-If `ocr llm test` fails, the user must configure an LLM. Guide them with one of these options:
+`ocr llm test`가 실패하면 사용자가 LLM을 설정해야 합니다. 다음 옵션 중 하나를 안내하세요:
 
-**Option A — Environment variables (highest priority, recommended for CI):**
+**옵션 A — 환경 변수 (최우선 순위, CI에 권장):**
 
 ```bash
 export OCR_LLM_URL=https://api.anthropic.com/v1/messages
@@ -52,7 +50,7 @@ export OCR_LLM_MODEL=claude-opus-4-6
 export OCR_USE_ANTHROPIC=true
 ```
 
-**Option B — Persistent config:**
+**옵션 B — 영구 설정:**
 
 ```bash
 ocr config set llm.url https://api.anthropic.com/v1/messages
@@ -61,174 +59,177 @@ ocr config set llm.model claude-opus-4-6
 ocr config set llm.use_anthropic true
 ```
 
-Stop here and ask the user to provide credentials — never invent or hardcode API keys.
+여기서 멈추고 사용자에게 자격 증명을 입력하도록 요청하세요. 절대 API 키를 임의로 생성하거나 하드코딩하지 마세요.
 
-## Workflow
+## 워크플로우
 
-### Step 1: Gather Business Context
+### 1단계: 비즈니스 컨텍스트 수집
 
-Analyze the review target (commits, branch, or changes) to extract concise business context. Pass this context via `--background` to improve review quality.
+리뷰 대상(커밋, 브랜치 또는 변경사항)을 분석하여 간결한 비즈니스 컨텍스트를 추출합니다.
+이 컨텍스트를 `--background`로 전달하면 리뷰 품질이 향상됩니다.
 
-### Step 2: Run Code Review
+### 2단계: 코드 리뷰 실행
 
-Run the OCR command with appropriate flags. **Always pass business context via `--background`** when available:
+적절한 플래그와 함께 OCR 명령을 실행합니다. **가능하면 항상 `--background`로 비즈니스 컨텍스트를 전달**하세요:
 
 ```bash
-ocr review --audience agent --background "business context here" [user-args]
+ocr review --audience agent --background "비즈니스 컨텍스트" [사용자-인자]
 ```
 
-**Argument handling:**
+**인자 처리:**
 
-- **Background context** (RECOMMENDED): use `--background "context"` or `-b "context"` to provide business context for better review quality
-- **Default** (no user arguments): reviews staged, unstaged, and untracked changes (workspace mode)
-- **Specific commit**: use `--commit` or `-c` to review a single commit against its parent
-- **Branch comparison**: use `--from <ref>` and `--to <ref>` to review diff between two refs
-- **Timeout**: default timeout is 10 minutes per file; adjust with `--timeout <minutes>`
-- **Concurrency**: default concurrency is 8 file workers; reduce with `--concurrency <n>` if rate limits are hit
-- **Preview mode**: use `--preview` or `-p` to preview which files will be reviewed without running the LLM
-- **Installation**: if `ocr` command is not found, install it by running `npm i -g @alibaba-group/open-code-review`
+- **배경 컨텍스트** (권장): `--background "컨텍스트"` 또는 `-b "컨텍스트"`로 비즈니스 컨텍스트 제공
+- **기본값** (사용자 인자 없음): 스테이징, 언스테이징, 추적되지 않은 변경사항 모두 리뷰 (워크스페이스 모드)
+- **특정 커밋**: `--commit` 또는 `-c`로 특정 커밋을 부모와 비교하여 리뷰
+- **브랜치 비교**: `--from <ref>`와 `--to <ref>`로 두 ref 간 diff 리뷰
+- **타임아웃**: 기본 타임아웃은 파일당 10분; `--timeout <분>`으로 조정
+- **동시성**: 기본 동시성은 8개 파일 워커; rate limit에 걸리면 `--concurrency <n>`으로 감소
+- **미리보기 모드**: `--preview` 또는 `-p`로 LLM 실행 없이 리뷰할 파일 목록 미리보기
+- **설치**: `ocr` 명령어를 찾을 수 없으면 `npm i -g @alibaba-group/open-code-review`로 설치
 
-**Common invocation patterns:**
+**자주 사용되는 호출 패턴:**
 
-| User says | Command to run |
-|-----------|---------------|
-| "review my changes" / "review the working copy" | `ocr review --audience agent -b "context"` |
-| "review this PR" / "review feature branch" | `ocr review --audience agent -b "context" --from main --to <branch>` |
-| "review commit abc123" | `ocr review --audience agent -b "context" --commit abc123` |
-| "what would be reviewed?" (dry-run) | `ocr review --preview` |
+| 사용자 요청 | 실행할 명령어 |
+|------------|--------------|
+| "내 변경사항 리뷰해줘" / "작업 중인 코드 리뷰" | `ocr review --audience agent -b "컨텍스트"` |
+| "이 PR 리뷰해줘" / "feature 브랜치 리뷰" | `ocr review --audience agent -b "컨텍스트" --from main --to <브랜치>` |
+| "커밋 abc123 리뷰해줘" | `ocr review --audience agent -b "컨텍스트" --commit abc123` |
+| "뭐가 리뷰될지 미리보기" (dry-run) | `ocr review --preview` |
 
-**Output mode:**
+**출력 모드:**
 
-- Always use `--audience agent` to suppress progress UI and emit only the final summary
+- 항상 `--audience agent`를 사용하여 진행 UI를 숨기고 최종 요약만 출력
 
-### Step 3: Classify and Report
+### 3단계: 분류 및 보고
 
-For each comment from the review output, classify by priority and report all issues to the user:
+리뷰 출력의 각 코멘트를 우선순위별로 분류하여 모든 이슈를 사용자에게 보고합니다:
 
-- **High**: Obvious bugs, security issues, clear mistakes, or well-founded suggestions with precise fix proposals
-- **Medium**: Reasonable concerns but context-dependent, style/performance suggestions, or fixes that require manual implementation
-- **Low**: Likely false positives, lacking sufficient context, nitpicks, or meaningless suggestions
+- **높음(High)**: 명백한 버그, 보안 이슈, 확실한 실수, 또는 정확한 수정 제안이 있는 근거 있는 제안
+- **중간(Medium)**: 합리적인 우려사항이지만 컨텍스트에 따라 다름, 스타일/성능 제안, 또는 수동 구현이 필요한 수정사항
+- **낮음(Low)**: 오탐 가능성 높음, 컨텍스트 부족, 사소한 지적, 또는 의미 없는 제안
 
-Report all comments grouped by priority level.
+모든 코멘트를 우선순위 레벨별로 그룹화하여 보고합니다.
 
-### Step 4: Fix
+### 4단계: 수정
 
-Before applying fixes, check whether the user requested automatic fixes:
+수정을 적용하기 전에 사용자가 자동 수정을 요청했는지 확인하세요:
 
-- If the user explicitly requested "review and fix" or similar, proceed with automatic fixes
-- If the user only requested "review" without fix intent, ask for permission before applying any changes
+- 사용자가 명시적으로 "리뷰하고 수정해줘" 등으로 요청한 경우 자동 수정 진행
+- 사용자가 수정 의도 없이 "리뷰"만 요청한 경우 변경 적용 전에 허가 요청
 
-When fixing issues and suggestions:
+이슈 및 제안 수정 시:
 
-- Focus on High and Medium priority items
-- Apply fixes directly to the code when safe and well-defined
-- For complex fixes requiring manual intervention, clearly describe what needs to be done
-- Always verify fixes with the user before committing
+- 높음(High) 및 중간(Medium) 우선순위 항목에 집중
+- 안전하고 명확하게 정의된 경우 코드에 직접 수정 적용
+- 수동 개입이 필요한 복잡한 수정사항은 수행할 작업을 명확히 설명
+- 항상 사용자에게 수정사항을 확인한 후 커밋
 
-## Output Format
+## 출력 형식
 
-Each comment contains:
+각 코멘트는 다음을 포함합니다:
 
-- `path`: File path
-- `content`: Review comment text
-- `start_line` / `end_line`: Line range (both 0 means positioning failed)
-- `suggestion_code`: Optional fix suggestion
-- `existing_code`: Optional original code snippet
-- `thinking`: Optional LLM reasoning process
+- `path`: 파일 경로
+- `content`: 리뷰 코멘트 텍스트
+- `start_line` / `end_line`: 라인 범위 (둘 다 0이면 위치 찾기 실패)
+- `suggestion_code`: 선택적 수정 제안 코드
+- `existing_code`: 선택적 원본 코드 스니펫
+- `thinking`: 선택적 LLM 추론 과정
 
-After filtering comments by priority, present results using this template:
+코멘트를 우선순위별로 필터링한 후, 다음 템플릿을 사용하여 결과를 표시합니다:
 
 ```markdown
-## Code Review Results
+## 코드 리뷰 결과
 
-**Files reviewed**: N
-**Issues found**: X high priority / Y medium priority
+**리뷰한 파일**: N개
+**발견된 이슈**: 높음 X개 / 중간 Y개
 
-### High Priority
+### 높음 우선순위
 
-- **`path/to/file.java:42`** — Brief description
-  > Recommendation: How to fix
+- **`path/to/file.java:42`** — 간단한 설명
+  > 권장사항: 수정 방법
 
-### Medium Priority
+### 중간 우선순위
 
-- **`path/to/file.ts:88`** — Brief description
-  > Recommendation: How to fix (if applicable)
+- **`path/to/file.ts:88`** — 간단한 설명
+  > 권장사항: 수정 방법 (해당 시)
 ```
 
-If the review found no issues after filtering, simply state: "Review complete — no issues found in N files."
+필터링 후 이슈가 없으면 다음과 같이 표시합니다: "리뷰 완료 — N개 파일에서 이슈 없음."
 
-**Priority classification:**
+**우선순위 분류 기준:**
 
-- **High**: Obvious bugs, security issues, clear mistakes, or well-founded suggestions with precise fix proposals
-- **Medium**: Reasonable concerns but context-dependent, style/performance suggestions, or fixes that require manual implementation
-- **Low**: Discarded silently (likely false positives, lacking context, nitpicks, or meaningless suggestions)
+- **높음(High)**: 명백한 버그, 보안 이슈, 확실한 실수, 또는 정확한 수정 제안이 있는 근거 있는 제안
+- **중간(Medium)**: 합리적인 우려사항이지만 컨텍스트에 따라 다름, 스타일/성능 제안, 또는 수동 구현이 필요한 수정사항
+- **낮음(Low)**: 자동 폐기 (오탐 가능성, 컨텍스트 부족, 사소한 지적, 의미 없는 제안)
 
-**Handling mispositioned comments:**
+**위치 미지정 코멘트 처리:**
 
-When `start_line` and `end_line` are both `0`, the comment failed to locate the exact position in the file. In such cases:
+`start_line`과 `end_line`이 모두 `0`이면 파일 내 정확한 위치를 찾지 못한 것입니다.
+이 경우:
 
-1. Read the comment content to understand the issue
-2. Examine the target file mentioned in the comment
-3. Identify the relevant code section based on the comment's context
-4. Apply the fix or suggestion to the correct location
+1. 코멘트 내용을 읽어 이슈 파악
+2. 코멘트에 언급된 대상 파일 검토
+3. 코멘트 컨텍스트를 기반으로 관련 코드 섹션 식별
+4. 올바른 위치에 수정 또는 제안 적용
 
-## Custom Review Rules
+## 사용자 정의 리뷰 규칙
 
-If the user wants project-specific rules, OCR resolves them in this priority order:
+프로젝트별 규칙이 필요한 경우, OCR은 다음 우선순위로 규칙을 적용합니다:
 
-1. `--rule <path>` flag (highest)
+1. `--rule <path>` 플래그 (최우선)
 2. `<repo>/.opencodereview/rule.json`
 3. `~/.opencodereview/rule.json`
-4. Built-in system defaults (lowest)
+4. 내장 시스템 기본값 (최하위)
 
-By default, the first matching user rule replaces the built-in system rule. Set `merge_system_rule: true` on a rule entry when the matched system rule and user rule should both be included.
+기본적으로 첫 번째로 일치하는 사용자 규칙이 내장 시스템 규칙을 대체합니다.
+규칙 항목에 `merge_system_rule: true`를 설정하면 일치하는 시스템 규칙과 사용자 규칙이 모두 포함됩니다.
 
-Rule file format:
+규칙 파일 형식:
 
 ```json
 {
   "rules": [
     {
       "path": "**/*.java",
-      "rule": "All new methods must validate required parameters for null",
+      "rule": "모든 새 메서드는 필수 파라미터에 대해 null 검증을 수행해야 합니다",
       "merge_system_rule": true
     },
     {
       "path": "**/*mapper*.xml",
-      "rule": "Check SQL for injection risks and missing closing tags"
+      "rule": "SQL 인젝션 위험 및 누락된 닫는 태그 확인"
     }
   ]
 }
 ```
 
-To preview which rule applies to a file before reviewing:
+리뷰 전에 파일에 적용되는 규칙을 미리 확인하려면:
 
 ```bash
 ocr rules check src/main/java/com/example/Foo.java
 ```
 
-## Gotchas
+## 주의사항
 
-- **LLM must be configured first** — `ocr review` will fail loudly if no LLM is reachable. Always run `ocr llm test` before the first review.
-- **Working directory matters** — `ocr review` operates on the Git repo at the current directory. Use `--repo /path/to/repo` to run from elsewhere.
-- **Untracked files are reviewed in workspace mode** — running bare `ocr review` includes staged, unstaged, *and* untracked changes. Stage selectively if you want narrower scope.
-- **Large diffs may hit token limits** — files with very large diffs may be truncated. The default `MAX_TOKENS` is 58888 per request.
-- **Plan phase triggers at 50 lines** — diffs exceeding 50 changed lines run an extra risk-analysis phase before main review. This adds latency but improves quality.
-- **Don't pass `--audience human`** — it streams progress UI that pollutes output. Always use `--audience agent`.
-- **Comment language follows config** — set `language` config to `English` or `Chinese` (default: Chinese) to control review comment language.
+- **LLM을 먼저 설정해야 함** — `ocr review`는 연결 가능한 LLM이 없으면 오류와 함께 실패합니다. 첫 리뷰 전에 항상 `ocr llm test`를 실행하세요.
+- **작업 디렉토리가 중요** — `ocr review`는 현재 디렉토리의 Git 저장소에서 작동합니다. 다른 위치에서 실행하려면 `--repo /path/to/repo`를 사용하세요.
+- **워크스페이스 모드에서 추적되지 않은 파일도 리뷰** — 기본 `ocr review`는 스테이징, 언스테이징, *그리고* 추적되지 않은 변경사항을 모두 포함합니다. 범위를 좁히려면 선택적으로 스테이징하세요.
+- **큰 diff는 토큰 제한에 걸릴 수 있음** — 매우 큰 diff가 있는 파일은 잘릴 수 있습니다. 기본 `MAX_TOKENS`는 요청당 58888입니다.
+- **50라인에서 계획 단계(plan phase) 트리거** — 50라인을 초과하는 변경 라인 수의 diff는 본 리뷰 전에 추가 위험 분석 단계를 실행합니다. 지연 시간이 추가되지만 품질이 향상됩니다.
+- **`--audience human`을 사용하지 마세요** — 진행 UI가 스트리밍되어 출력을 오염시킵니다. 항상 `--audience agent`를 사용하세요.
+- **코멘트 언어는 설정을 따름** — `language` 설정을 `English` 또는 `Chinese`(기본값: Chinese)로 설정하여 리뷰 코멘트 언어를 제어합니다.
 
-## Validation
+## 검증
 
-After the review completes, verify success by checking:
+리뷰 완료 후 성공 여부를 다음으로 확인하세요:
 
-1. The command exited with code 0
-2. Comments were generated (or "No comments generated" message appears)
-3. Warnings (if any) are displayed in stderr
+1. 명령어가 종료 코드 0으로 종료되었는지
+2. 코멘트가 생성되었는지 (또는 "No comments generated" 메시지가 표시되는지)
+3. 경고(있는 경우)가 stderr에 표시되는지
 
-If errors occurred, check the stderr warnings for details about which files failed and why.
+오류가 발생한 경우, stderr 경고에서 어떤 파일이 실패했는지와 그 이유를 확인하세요.
 
-## References
+## 참고 자료
 
-- Full docs: https://github.com/alibaba/open-code-review
-- NPM package: https://www.npmjs.com/package/@alibaba-group/open-code-review
-- Issue tracker: https://github.com/alibaba/open-code-review/issues
+- 전체 문서: https://github.com/alibaba/open-code-review
+- NPM 패키지: https://www.npmjs.com/package/@alibaba-group/open-code-review
+- 이슈 트래커: https://github.com/alibaba/open-code-review/issues
