@@ -4,7 +4,7 @@
 >
 > 원본 스킬들을 한국어로 번역하여 개인 용도로 사용하고 있습니다.
 
-## 📂 스킬 목록 (총 43개)
+## 📂 스킬 목록 (총 33개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -27,19 +27,9 @@
 
 | 스킬 | 설명 |
 |------|------|
-| [high-end-visual-design](high-end-visual-design/) | AI가 하이엔드 에이전시처럼 디자인하도록 가이드 |
 | [design-taste-frontend](design-taste-frontend/) | 반-슬롭 프론트엔드 랜딩페이지/포트폴리오/리디자인 |
-| [design-taste-frontend-v1](design-taste-frontend-v1/) | 원본 v1 테이스트 스킬 (하위 호환용) |
-| [gpt-taste](gpt-taste/) | 엘리트 UX/UI 및 고급 GSAP 모션 엔지니어 |
 | [frontend-design](frontend-design/) | 새 UI 구축/재구성 시 독특한 시각 디자인 가이드 |
-| [minimalist-ui](minimalist-ui/) | 깔끔한 에디토리얼 스타일 인터페이스 |
-| [industrial-brutalist-ui](industrial-brutalist-ui/) | 스위스 타이포그래피 + 군사용 터미널 미학 융합 |
-| [brandkit](brandkit/) | 프리미엄 브랜드 가이드라인/로고/아이덴티티 생성 |
-| [stitch-design-taste](stitch-design-taste/) | Google Stitch용 시맨틱 디자인 시스템 |
-| [redesign-existing-projects](redesign-existing-projects/) | 기존 웹사이트/앱 프리미엄 업그레이드 |
 | [image-to-code](image-to-code/) | 이미지 → 코드 변환 |
-| [imagegen-frontend-web](imagegen-frontend-web/) | 프리미엄 웹사이트 디자인 레퍼런스 이미지 생성 |
-| [imagegen-frontend-mobile](imagegen-frontend-mobile/) | 프리미엄 모바일 앱 화면 컨셉 이미지 생성 |
 | [design-an-interface](design-an-interface/) | 모듈에 대한 복수 인터페이스 설계안 생성 |
 
 </details>
@@ -120,7 +110,7 @@
 | 출처 | 스킬 |
 |------|------|
 | [mattpocock/skills](https://github.com/mattpocock/skills) (24개) | caveman, design-an-interface, diagnose, edit-article, grill-me, grill-with-docs, handoff, improve-codebase-architecture, issue(원명:qa), obsidian-vault, prototype, request-refactor-plan, review, scaffold-exercises, setup-matt-pocock-skills, setup-pre-commit, tdd, teach, to-issues, to-prd, triage, ubiquitous-language, write-a-skill, zoom-out |
-| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (13개) | brandkit, design-taste-frontend, design-taste-frontend-v1, full-output-enforcement, gpt-taste, high-end-visual-design, image-to-code, imagegen-frontend-mobile, imagegen-frontend-web, industrial-brutalist-ui, minimalist-ui, redesign-existing-projects, stitch-design-taste |
+| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (3개) | design-taste-frontend, full-output-enforcement, image-to-code |
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | agent-browser |
 | [vercel-labs/skills](https://github.com/vercel-labs/skills) | find-skills |
 | [anthropics/skills](https://github.com/anthropics/skills) | frontend-design |
