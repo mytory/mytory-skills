@@ -4,19 +4,17 @@
 >
 > 원본 스킬들을 한국어로 번역하여 개인 용도로 사용하고 있습니다.
 
-## 📂 스킬 목록 (총 33개)
+## 📂 스킬 목록 (총 26개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
 
 | 스킬 | 설명 |
 |------|------|
-| [setup-pre-commit](setup-pre-commit/) | Husky 프리커밋 훅과 lint-staged(Prettier), 타입 검사, 테스트 설정 |
 | [open-code-review](open-code-review/) | `ocr` CLI로 Git 변경사항 AI 기반 코드 리뷰 수행 |
 | [review](review/) | 기준점 이후 변경사항을 표준/명세 두 축으로 검토 |
 | [diagnose](diagnose/) | 버그와 성능 저하를 위한 규율 있는 진단 루프 |
 | [tdd](tdd/) | Red-Green-Refactor 루프를 통한 테스트 주도 개발 |
-| [scaffold-exercises](scaffold-exercises/) | 연습문제 디렉터리 구조 생성 및 린트 통과 |
 | [prototype](prototype/) | 디자인 커밋 전 구체화를 위한 일회용 프로토타입 |
 | [full-output-enforcement](full-output-enforcement/) | LLM 출력 잘림 방지, 완전한 코드 생성 강제 |
 
@@ -43,10 +41,8 @@
 | [to-prd](to-prd/) | 대화 컨텍스트를 PRD로 변환하여 이슈 트래커에 게시 |
 | [to-issues](to-issues/) | 계획/명세를 작업 가능한 이슈로 분해 등록 |
 | [request-refactor-plan](request-refactor-plan/) | 리팩터링 계획 수립 및 GitHub 이슈 등록 |
-| [ubiquitous-language](ubiquitous-language/) | DDD 스타일 보편 언어 용어집 추출 및 제안 |
 | [improve-codebase-architecture](improve-codebase-architecture/) | 코드베이스 아키텍처 개선 기회 탐색 |
 | [write-a-skill](write-a-skill/) | 새 에이전트 스킬 생성 (구조, 점진적 공개, 번들 리소스) |
-| [find-skills](find-skills/) | 에이전트 스킬 검색 및 설치 도움 |
 
 </details>
 
@@ -60,7 +56,6 @@
 | [handoff](handoff/) | 대화를 핸드오프 문서로 압축하여 다른 에이전트에 인계 |
 | [zoom-out](zoom-out/) | 한 단계 물러나 넓은 맥락/상위 관점 제공 |
 | [triage](triage/) | 상태 머신 기반 이슈 분류 |
-| [issue](issue/) | 버그/이슈를 대화형 QA로 GitLab 이슈 등록 |
 
 </details>
 
@@ -98,8 +93,6 @@
 | 스킬 | 설명 |
 |------|------|
 | [caveman](caveman/) | 초압축 커뮤니케이션 모드 (토큰 75% 절감) |
-| [teach](teach/) | 워크스페이스 안에서 새 스킬/개념 교육 |
-| [setup-matt-pocock-skills](setup-matt-pocock-skills/) | AGENTS.md/CLAUDE.md에 스킬 블록 설정 |
 
 </details>
 
@@ -109,10 +102,9 @@
 
 | 출처 | 스킬 |
 |------|------|
-| [mattpocock/skills](https://github.com/mattpocock/skills) (24개) | caveman, design-an-interface, diagnose, edit-article, grill-me, grill-with-docs, handoff, improve-codebase-architecture, issue(원명:qa), obsidian-vault, prototype, request-refactor-plan, review, scaffold-exercises, setup-matt-pocock-skills, setup-pre-commit, tdd, teach, to-issues, to-prd, triage, ubiquitous-language, write-a-skill, zoom-out |
+| [mattpocock/skills](https://github.com/mattpocock/skills) (18개) | caveman, design-an-interface, diagnose, edit-article, grill-me, grill-with-docs, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, review, tdd, to-issues, to-prd, triage, write-a-skill, zoom-out |
 | [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (3개) | design-taste-frontend, full-output-enforcement, image-to-code |
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | agent-browser |
-| [vercel-labs/skills](https://github.com/vercel-labs/skills) | find-skills |
 | [anthropics/skills](https://github.com/anthropics/skills) | frontend-design |
 | [ctxrs/ctx](https://github.com/ctxrs/ctx) | ctx-agent-history-search |
 | [alibaba/open-code-review](https://github.com/alibaba/open-code-review) | open-code-review |
