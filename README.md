@@ -83,7 +83,7 @@
 
 | 스킬 | 설명 |
 |------|------|
-| [translate-book](translate-book/) | 병렬 하위 에이전트로 책(PDF/DOCX/EPUB) 번역 |
+| [translate-long-text](translate-long-text/) | 병렬 하위 에이전트로 긴 글(PDF/DOCX/EPUB/TXT/MD) 번역 |
 
 </details>
 
@@ -108,7 +108,7 @@
 | [anthropics/skills](https://github.com/anthropics/skills) | frontend-design |
 | [ctxrs/ctx](https://github.com/ctxrs/ctx) | ctx-agent-history-search |
 | [alibaba/open-code-review](https://github.com/alibaba/open-code-review) | open-code-review |
-| [deusyu/translate-book](https://github.com/deusyu/translate-book) | translate-book |
+| [deusyu/translate-book](https://github.com/deusyu/translate-book) | translate-long-text |
 
 ## 🔗 관련 링크
 

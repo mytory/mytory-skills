@@ -1,27 +1,38 @@
 ---
-name: translate-book
-description: 병렬 하위 에이전트를 사용하여 책(PDF/DOCX/EPUB)을 모든 언어로 번역합니다. 입력 → Markdown 청크 → 번역된 청크 → HTML/DOCX/EPUB/PDF로 변환합니다.
+name: translate-long-text
+description: 긴 글(PDF/DOCX/EPUB/TXT/MD)을 병렬 하위 에이전트로 청크 단위로 나눠 다른 언어로 번역합니다. 책·논문·보고서·매뉴얼 등 장문 문서 번역, 텍스트/마크다운 파일 번역, 또는 파일 전체를 일관된 용어로 일괄 번역해야 할 때 사용합니다.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
-metadata: {"openclaw":{"requires":{"bins":["python3","pandoc","ebook-convert"],"anyBins":["calibre","ebook-convert"]}}}
+metadata: {"openclaw":{"requires":{"bins":["python3","pandoc","ebook-convert"],"anyBins":["calibre","ebook-convert"]},"homepage":"https://github.com/deusyu/translate-book"}}
 ---
 
-# 책 번역 스킬
+# 긴 글 번역 스킬
 
-당신은 책 번역 어시스턴트입니다. 다단계 파이프라인을 조정하여 한 언어에서 다른 언어로 책 전체를 번역합니다.
+긴 문서(책, 논문, 보고서, 매뉴얼, 플레인 텍스트)를 한 언어에서 다른 언어로 번역하는 다단계 파이프라인입니다. 원문 → Markdown 청크 → 병렬 하위 에이전트 번역 → 병합/빌드 순서로 진행되며, 문서 전체에 걸친 용어 일관성을 유지합니다.
 
-## 워크플로우
+## 파이프라인 개요
 
-### 1. 파라미터 수집
+```
+입력 파일 (PDF/DOCX/EPUB/TXT/MD)
+  → convert.py: Markdown 청크(chunkNNNN.md) + manifest.json + config.txt
+  → 용어집 구축 (glossary.json)
+  → 병렬 하위 에이전트 번역 (청크당 1개, 배치 단위 실행)
+  → merge_meta.py: 하위 에이전트 관찰을 용어집에 병합
+  → merge_and_build.py: output.md + book.html/docx/epub/pdf
+```
+
+## 1. 파라미터 수집
 
 사용자 메시지에서 다음을 확인하세요:
-- **file_path**: 입력 파일 경로 (PDF, DOCX 또는 EPUB) — 필수
+
+- **file_path**: 입력 파일 경로 — 필수. 지원 형식: `.pdf`, `.docx`, `.epub` (Calibre 사용), `.txt`, `.md`, `.markdown` (네이티브 처리, Calibre 불필요)
 - **target_lang**: 대상 언어 코드 (기본값: `zh`) — 예: zh, en, ja, ko, fr, de, es
 - **concurrency**: 배치당 병렬 하위 에이전트 수 (기본값: `8`)
-- **custom_instructions**: 사용자의 추가 번역 지시사항 (선택 사항)
+- **temp_root**: `{filename}_temp/`를 만들 상위 디렉토리 (선택, 기본값: 현재 작업 디렉토리)
+- **custom_instructions**: 사용자의 추가 번역 지시사항 (선택)
 
 파일 경로가 제공되지 않으면 사용자에게 물어보세요.
 
-### 2. 전처리 — Markdown 청크로 변환
+## 2. 전처리 — Markdown 청크로 변환
 
 변환 스크립트를 실행하여 청크를 생성합니다:
 
@@ -29,13 +40,21 @@ metadata: {"openclaw":{"requires":{"bins":["python3","pandoc","ebook-convert"],"
 python3 {baseDir}/scripts/convert.py "<file_path>" --olang "<target_lang>"
 ```
 
+선택적 인자:
+- `--temp-root "<dir>"` — temp 디렉토리 위치 지정
+- `--chunk-size <N>` — 청크당 목표 문자 수 (기본값: 6000)
+- `--strip-page-numbers` — PDF/DOCX/EPUB에서 독립된 숫자 행을 적극 제거 (기본값: off)
+
 이 명령은 `{filename}_temp/` 디렉토리를 생성하며 다음 파일들을 포함합니다:
-- `input.html`, `input.md` — 중간 파일
+- `input.html`, `input.md` — 중간 파일 (TXT/MD 입력 시 `input.md`가 원문 그대로, `input.html`은 파이프라인 통과용 아티팩트)
 - `chunk0001.md`, `chunk0002.md`, ... — 번역할 소스 청크
 - `manifest.json` — 추적 및 검증용 청크 매니페스트
 - `config.txt` — 메타데이터가 포함된 파이프라인 설정
+- `source_fingerprint.json` — 원본 파일 해시 (캐시 검증용)
 
-### 3. 청크 발견
+**참고**: TXT/MD 입력은 Calibre/pandoc 없이 네이티브로 처리됩니다. 이미지 추출은 없지만, Markdown 이미지 참조는 원문에 그대로 남아 `output.md`에서 상대 경로로 해석됩니다. 같은 파일명의 다른 확장자를 연달아 변환하면 `source_fingerprint`가 원본 변경을 감지하고 중단하므로, temp 디렉토리는 파일당 고유해야 합니다.
+
+## 3. 청크 발견
 
 Glob을 사용하여 모든 소스 청크를 찾고 아직 번역이 필요한 청크를 확인하세요:
 
@@ -46,9 +65,9 @@ Glob: {filename}_temp/output_chunk*.md
 
 소스 파일은 있지만 해당하는 `output_` 파일이 없는 청크 집합을 계산하세요. 이 청크들이 번역해야 할 대상입니다.
 
-모든 청크에 이미 번역이 있다면 5단계로 건너뛰세요.
+모든 청크에 이미 번역이 있다면 6단계로 건너뛰세요.
 
-### 3.5. 용어집 구축 (용어 일관성)
+## 4. 용어집 구축 (용어 일관성)
 
 각 청크는 별도의 하위 에이전트가 새로운 컨텍스트로 번역합니다. 공유 상태가 없으면 동일한 고유명사가 여러 번역에서 다르게 번역될 수 있습니다. 용어집은 각 하위 에이전트가 자신의 청크에 나타나는 용어에 대해 동일한 정규 번역을 사용하도록 합니다.
 
@@ -57,7 +76,7 @@ Glob: {filename}_temp/output_chunk*.md
 그 외의 경우:
 
 1. **청크 샘플링**: `chunk0001.md`, 마지막 청크, 그리고 균등한 간격의 중간 청크 3개를 읽으세요. `chunk_count < 5`이면 모두 샘플링하세요.
-2. **용어 추출**: 샘플에서 책 전체에 걸쳐 일관된 번역이 필요한 고유명사와 반복되는 도메인 용어를 식별하세요 — 일반적으로 인물, 장소, 조직, 기술 개념 등입니다. 각각을 대상 언어로 번역하세요. 어떤 번역가라도 동일하게 번역할 일반적인 어휘는 건너뛰세요.
+2. **용어 추출**: 샘플에서 문서 전체에 걸쳐 일관된 번역이 필요한 고유명사와 반복되는 도메인 용어를 식별하세요 — 일반적으로 인물, 장소, 조직, 기술 개념 등입니다. 각각을 대상 언어로 번역하세요. 어떤 번역가라도 동일하게 번역할 일반적인 어휘는 건너뛰세요.
 3. **`glossary.json` 작성** — temp 디렉토리에 다음 v2 스키마로 작성하세요:
 
    ```json
@@ -86,7 +105,7 @@ Glob: {filename}_temp/output_chunk*.md
 
 용어집은 수동 편집이 가능합니다. 부분 실행 후 사용자가 `target` 필드를 편집해도 괜찮습니다 — 해당 청크가 자동으로 재번역되지는 않습니다.
 
-### 4. 하위 에이전트를 사용한 병렬 번역
+## 5. 병렬 번역 (하위 에이전트)
 
 **각 청크는 독립적인 하위 에이전트를 받습니다** (1청크 = 1하위 에이전트 = 1신규 컨텍스트). 이는 컨텍스트 누적과 출력 잘림을 방지합니다.
 
@@ -114,7 +133,7 @@ API rate limit을 준수하기 위해 청크를 배치로 실행하세요:
 python3 {baseDir}/scripts/glossary.py print-terms-for-chunk "<temp_dir>" "chunk<NNNN>.md"
 ```
 
-stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) 모든 용어 또는 책 전체에서 가장 빈도가 높은 top-N 용어의 3열 마크다운 테이블(`원문 | 별칭 | 번역문`)을 출력합니다. 테이블을 번역 프롬프트의 규칙 #13에 `{TERM_TABLE}`로 주입하세요. **stdout이 비어 있으면(용어집 없음 또는 관련 용어 없음) 이 청크의 프롬프트에서 규칙 #13을 완전히 생략하세요** — `{TERM_TABLE}` 플레이스홀더를 남기지 마세요.
+stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) 모든 용어 또는 문서 전체에서 가장 빈도가 높은 top-N 용어의 3열 마크다운 테이블(`원문 | 별칭 | 번역문`)을 출력합니다. 테이블을 번역 프롬프트의 규칙 #13에 `{TERM_TABLE}`로 주입하세요. **stdout이 비어 있으면(용어집 없음 또는 관련 용어 없음) 이 청크의 프롬프트에서 규칙 #13을 완전히 생략하세요** — `{TERM_TABLE}` 플레이스홀더를 남기지 마세요.
 
 **각 하위 에이전트의 태스크**:
 1. 소스 청크 파일 읽기 (예: `chunk0001.md`)
@@ -153,7 +172,7 @@ stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) �
 
 **중요**: 각 하위 에이전트는 정확히 **하나**의 청크를 번역하고 결과를 직접 출력 파일에 작성합니다. START/END 마커가 필요하지 않습니다.
 
-#### 하위 에이전트용 번역 프롬프트
+### 하위 에이전트용 번역 프롬프트
 
 각 하위 에이전트의 지시사항에 이 번역 프롬프트를 포함하세요(`{TARGET_LANGUAGE}`를 실제 언어명(예: "한국어")으로 바꾸세요):
 
@@ -183,7 +202,7 @@ stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) �
    - 독립적으로 있는 짧은 텍스트(보통 50자 미만)
    - 요약적 또는 개괄적인 성격의 문장
    - 문서 구조에서 구분 및 정리 역할을 하는 텍스트
-   - 글꼴 크기가明显 다르거나 특별한 형식이 있는 텍스트
+   - 글꼴 크기가 확연히 다르거나 특별한 형식이 있는 텍스트
    - 숫자 번호로 시작하는 장 텍스트(예: "1.1 개요", "제3장" 등)
 10. 제목 계층 판단:
     - 컨텍스트와 내용 중요성에 따라 제목 계층 판단
@@ -203,7 +222,7 @@ stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) �
 
 ---
 
-### 4.5. 하위 에이전트 메타를 용어집에 병합 (각 배치 후)
+## 6. 하위 에이전트 메타를 용어집에 병합 (각 배치 후)
 
 각 하위 에이전트는 번역된 청크와 함께 `output_chunk<NNNN>.meta.json`을 출력합니다. 각 배치가 완료된 후 메인 에이전트는 이러한 관찰 내용을 정규 용어집에 병합하여 이후 배치가 향상된 용어집을 사용할 수 있게 합니다.
 
@@ -225,7 +244,7 @@ stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) �
    - `consumed_chunk_ids` — 이번 라운드에서 스캔한 모든 메타 파일 (결과 생성 여부와 관계없음). 적용 시 이러한 해시가 `applied_meta_hashes`에 기록됩니다.
    - `malformed_meta_chunk_ids` — 검증에 실패한 메타 파일. 격리됨: 소비되지 않으며 실행이 중단되지 않음. 배치 진행 상황에 표시하세요.
 
-2. **`consumed_chunk_ids`가 비어 있으면** → 스캔된 것이 없음; 5단계로 건너뛰세요.
+2. **`consumed_chunk_ids`가 비어 있으면** → 스캔된 것이 없음; 다음 단계로 건너뛰세요.
 
 3. **`consumed_chunk_ids`가 비어 있지 않지만 `auto_apply`와 `decisions_needed`가 모두 비어 있으면** → 그래도 `{"auto_apply": [], "decisions": [], "consumed_chunk_ids": [...]}`를 `apply-merge`에 파이프하여 해시가 기록되도록 하세요. **이 단계를 건너뛰는 것이 버그입니다** — 효과 없는 메타가 영원히 재스캔됩니다.
 
@@ -253,7 +272,7 @@ stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) �
 
 이전에 중단된 배치 후 새로 실행하면 `prepare-merge`는 남겨진 메타 파일을 모두 선택합니다. 수동으로 삭제하지 마세요.
 
-### 5. 완전성 확인 및 재시도
+## 7. 완전성 확인 및 재시도
 
 모든 배치가 완료된 후 Glob을 사용하여 모든 소스 청크에 해당 출력 파일이 있는지 확인하세요.
 
@@ -275,19 +294,19 @@ python3 {baseDir}/scripts/merge_meta.py status "<temp_dir>"
 
 심각도 규칙(다음 중 어떤 것도 실행을 실패시키지 않습니다 — 메타는 비차단입니다):
 
-- `unmerged_meta_files > 0` (4.5단계 실행 후) → 버그, 눈에 띄게 표시. 재개 시 발견되어야 함.
+- `unmerged_meta_files > 0` (6단계 실행 후) → 버그, 눈에 띄게 표시. 재개 시 발견되어야 함.
 - `malformed_meta_files > 0` → 하위 에이전트가 잘못된 메타를 출력함. chunk_id와 "파일을 수동으로 수정하고 다시 실행하면 이 청크의 피드백이 병합됩니다" 메모를 출력.
 - `meta_files_found < translated_chunks` → 하위 에이전트 준수 문제(일부 청크가 메타를 전혀 출력하지 않음). 누락된 chunk_id 출력.
 
 재시도 후에도 번역에 실패한 청크를 보고하세요.
 
-### 6. 책 제목 번역
+## 8. 제목 번역
 
-temp 디렉토리에서 `config.txt`를 읽어 `original_title` 필드를 가져오세요.
+temp 디렉토리에서 `config.txt`를 읽어 `original_title` 필드를 가져오세요. (PDF/DOCX/EPUB는 메타데이터에서 추출되고, TXT/MD는 파일명 스템입니다.)
 
 제목을 대상 언어로 번역하세요. 한국어의 경우 필요시 적절한 표기를 사용하세요.
 
-### 7. 후처리 — 병합 및 빌드
+## 9. 후처리 — 병합 및 빌드
 
 번역된 제목으로 빌드 스크립트를 실행하세요:
 
@@ -297,15 +316,17 @@ python3 {baseDir}/scripts/merge_and_build.py --temp-dir "<temp_dir>" --title "<t
 
 `--cleanup` 플래그는 완전히 성공적인 빌드 후 중간 파일(청크, input.html 등)을 제거합니다. 사용자가 중간 파일 유지를 요청한 경우 `--cleanup`을 생략하세요.
 
-스크립트는 `config.txt`에서 `output_lang`을 자동으로 읽습니다. 선택적 재정의: `--lang`, `--author`.
+스크립트는 `config.txt`에서 `output_lang`을 자동으로 읽습니다. 선택적 재정의: `--lang`, `--author`. `--export-name "<stem>"`으로 출력 파일명을 사용자 친화적으로 변경할 수 있습니다 (예: `--export-name report` → `report.html`, `report.docx`, ...).
 
 이 명령은 temp 디렉토리에 다음 파일들을 생성합니다:
-- `output.md` — 병합된 번역 마크다운
+- `output.md` — 병합된 번역 마크다운 (모든 입력 형식의 1차 산출물)
 - `book.html` — 떠다니는 목차가 있는 웹 버전
 - `book_doc.html` — 전자책 버전
 - `book.docx`, `book.epub`, `book.pdf` — 형식 변환 결과 (Calibre 필요)
 
-### 8. 결과 보고
+비책(非책) 문서의 경우 `book.*` 파일명은 호환성을 위해 유지되며, `output.md`가 실질 결과물입니다. 형식 변환은 각각 독립적으로 시도되며, 실패해도 파이프라인은 중단되지 않습니다.
+
+## 10. 결과 보고
 
 사용자에게 알리세요:
 - 출력 파일 위치
@@ -313,3 +334,11 @@ python3 {baseDir}/scripts/merge_and_build.py --temp-dir "<temp_dir>" --title "<t
 - 번역된 제목
 - 생성된 출력 파일 목록과 크기
 - 형식 생성 실패 사항
+
+## 이어가기 (재개)
+
+파이프라인은 멱등적으로 재개할 수 있습니다:
+- `convert.py` 재실행 — 기존 `input.html`/`input.md`/청크가 있으면 해당 단계를 건너뜁니다.
+- 이미 번역된 청크(`output_` 파일)는 3단계에서 자동으로 제외됩니다.
+- `glossary.json`은 재빌드되지 않으며, `merge_meta.py`는 남은 메타 파일만 선택합니다.
+- `source_fingerprint.json`이 원본 변경을 감지하면 안전하게 중단합니다 — temp 디렉토리를 지우고 다시 실행하세요.

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-convert.py - Convert PDF/DOCX/EPUB to Markdown chunks via Calibre HTMLZ
+convert.py - Convert source documents (PDF/DOCX/EPUB via Calibre HTMLZ,
+TXT/MD natively without Calibre) to Markdown chunks.
 Combines the original steps 1-2 into a single script.
 """
 
@@ -15,6 +16,7 @@ import bisect
 import glob
 import json
 import re
+import html
 
 from manifest import create_manifest, file_hash
 
@@ -807,10 +809,53 @@ def _abort_on_strip_cache_conflict(blockers, temp_dir):
     sys.exit(1)
 
 
+def _setup_text_temp_dir(input_file, temp_root=None):
+    """Prepare temp dir for plain-text (TXT/MD) sources.
+
+    Writes input.html (minimal passthrough artifact) and input.md (the
+    authoritative source) directly, so the shared chunk pipeline reuses the
+    existing cached-path logic. No Calibre or pandoc needed.
+    Returns temp_dir on success, None on failure.
+    """
+    temp_dir = build_temp_dir(input_file, temp_root)
+    os.makedirs(temp_dir, exist_ok=True)
+
+    stem = os.path.splitext(os.path.basename(input_file))[0]
+    input_html = os.path.join(temp_dir, "input.html")
+    input_md = os.path.join(temp_dir, "input.md")
+
+    try:
+        with open(input_file, 'r', encoding='utf-8-sig', errors='replace') as f:
+            text = f.read()
+    except Exception as e:
+        print(f"Error reading text file: {e}")
+        return None
+
+    # Normalize: strip BOM, unify line endings.
+    text = text.replace('\ufeff', '').replace('\r\n', '\n').replace('\r', '\n')
+
+    if not os.path.exists(input_html):
+        escaped = html.escape(text)
+        with open(input_html, 'w', encoding='utf-8') as f:
+            f.write(
+                f"<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">"
+                f"<title>{html.escape(stem)}</title></head>\n<body>\n"
+                f"{escaped}\n</body></html>\n"
+            )
+        print(f"Wrote passthrough HTML: {input_html}")
+
+    if not os.path.exists(input_md):
+        with open(input_md, 'w', encoding='utf-8') as f:
+            f.write(text)
+        print(f"Wrote Markdown source: {input_md}")
+
+    return temp_dir
+
+
 def main():
     """Main conversion function"""
-    parser = argparse.ArgumentParser(description="Convert PDF/DOCX/EPUB to markdown chunks via HTMLZ")
-    parser.add_argument("input_file", help="Input file (PDF, DOCX, or EPUB)")
+    parser = argparse.ArgumentParser(description="Convert source documents to markdown chunks (PDF/DOCX/EPUB via Calibre HTMLZ; TXT/MD natively)")
+    parser.add_argument("input_file", help="Input file (PDF, DOCX, EPUB, TXT, or MD)")
     parser.add_argument("-l", "--ilang", default="auto", help="Input language (default: auto)")
     parser.add_argument("--olang", default="zh", help="Output language (default: zh)")
     parser.add_argument("--chunk-size", type=int, default=6000, help="Target chunk size in characters (default: 6000)")
@@ -834,9 +879,32 @@ def main():
         sys.exit(1)
 
     file_ext = os.path.splitext(input_file)[1].lower()
-    if file_ext not in ['.pdf', '.docx', '.epub']:
+    if file_ext not in ['.pdf', '.docx', '.epub', '.txt', '.md', '.markdown']:
         print(f"Error: Unsupported file type: {file_ext}")
         sys.exit(1)
+
+    # Plain-text sources: native pipeline, no Calibre/pandoc required.
+    if file_ext in ('.txt', '.md', '.markdown'):
+        print("=== Plain-Text Source Pipeline (no Calibre needed) ===")
+        print(f"Input file: {input_file}")
+        print(f"Target chunk size: {args.chunk_size} characters")
+        current_fingerprint = source_fingerprint(input_file)
+        temp_dir = _setup_text_temp_dir(input_file, args.temp_root)
+        if not temp_dir:
+            sys.exit(1)
+        _abort_on_source_cache_mismatch(
+            *check_source_cache(temp_dir, current_fingerprint), temp_dir=temp_dir
+        )
+        input_md = os.path.join(temp_dir, "input.md")
+        chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
+        if chunk_count == 0:
+            sys.exit(1)
+        metadata = {'title': os.path.splitext(os.path.basename(input_file))[0]}
+        create_config_file(temp_dir, input_file, args.ilang, args.olang, metadata)
+        _write_source_fingerprint(temp_dir, current_fingerprint)
+        print("Conversion completed successfully!")
+        print(f"Temp directory: {temp_dir}")
+        return
 
     print("=== File Conversion via Calibre HTMLZ ===")
     print(f"Input file: {input_file}")
