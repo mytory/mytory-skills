@@ -4,7 +4,7 @@
 >
 > 원본 스킬들을 한국어로 번역하여 개인 용도로 사용하고 있습니다.
 
-## 📂 스킬 목록 (총 27개)
+## 📂 스킬 목록 (총 28개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -12,6 +12,7 @@
 | 스킬 | 설명 |
 |------|------|
 | [open-code-review](open-code-review/) | `ocr` CLI로 Git 변경사항 AI 기반 코드 리뷰 수행 |
+| [open-code-review-delegate](open-code-review-delegate/) | OCR은 파일 선택·규칙 해석만, 리뷰는 호스트 에이전트가 직접 수행 |
 | [review](review/) | 기준점 이후 변경사항을 표준/명세 두 축으로 검토 |
 | [diagnose](diagnose/) | 버그와 성능 저하를 위한 규율 있는 진단 루프 |
 | [tdd](tdd/) | Red-Green-Refactor 루프를 통한 테스트 주도 개발 |
@@ -116,7 +117,7 @@
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | agent-browser |
 | [anthropics/skills](https://github.com/anthropics/skills) | frontend-design |
 | [ctxrs/ctx](https://github.com/ctxrs/ctx) | ctx-agent-history-search |
-| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) | open-code-review |
+| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개) | open-code-review, open-code-review-delegate |
 | [deusyu/translate-book](https://github.com/deusyu/translate-book) | translate-long-text |
 
 ## 🔗 관련 링크
