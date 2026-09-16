@@ -4,7 +4,7 @@
 >
 > 원본 스킬들을 한국어로 번역하여 개인 용도로 사용하고 있습니다.
 
-## 📂 스킬 목록 (총 26개)
+## 📂 스킬 목록 (총 27개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -84,6 +84,15 @@
 | 스킬 | 설명 |
 |------|------|
 | [translate-long-text](translate-long-text/) | 병렬 하위 에이전트로 긴 글(PDF/DOCX/EPUB/TXT/MD) 번역 |
+
+</details>
+
+<details>
+<summary><strong>💚 웰빙 / 응원</strong></summary>
+
+| 스킬 | 설명 |
+|------|------|
+| [life-cheer](life-cheer/) | 심리학 근거 기반 응원 메시지 생성 — 힘든 날부터 평온·심심·기분 좋은 날까지. 최신 연구 출처·메시지 116개·CLI 포함 (자작) |
 
 </details>
 
