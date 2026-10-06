@@ -4,6 +4,34 @@
 >
 > 원본 스킬들을 한국어로 번역하여 개인 용도로 사용하고 있습니다.
 
+## 설치
+
+Node.js와 npm(`npx`), Git이 필요합니다. [skills CLI](https://github.com/vercel-labs/skills)를 실행하면 설치할 스킬과 사용할 에이전트를 대화형으로 선택할 수 있습니다.
+
+```bash
+npx skills add mytory/mytory-skills
+```
+
+설치하지 않고 사용 가능한 스킬 목록만 확인하려면:
+
+```bash
+npx skills add mytory/mytory-skills --list
+```
+
+특정 스킬만 설치하려면 `--skill`을 지정합니다.
+
+```bash
+npx skills add mytory/mytory-skills --skill diagnose
+```
+
+기본 설치 범위는 현재 프로젝트입니다. 모든 프로젝트에서 사용할 수 있도록 사용자 홈에 설치하려면 `-g`를 추가합니다. 다음은 `diagnose`를 Codex용으로 전역 설치하는 예시입니다.
+
+```bash
+npx skills add mytory/mytory-skills --skill diagnose -a codex -g
+```
+
+스킬 폴더의 스크립트와 참고 자료도 함께 설치됩니다. 스킬에서 사용하는 외부 도구와 API 인증은 각 `SKILL.md`의 안내에 따라 별도로 준비해야 합니다.
+
 ## 📂 스킬 목록 (총 32개)
 
 <details>
