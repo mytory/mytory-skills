@@ -4,7 +4,7 @@
 >
 > 원본 스킬들을 한국어로 번역하여 개인 용도로 사용하고 있습니다.
 
-## 📂 스킬 목록 (총 28개)
+## 📂 스킬 목록 (총 32개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -44,6 +44,8 @@
 | [request-refactor-plan](request-refactor-plan/) | 리팩터링 계획 수립 및 GitHub 이슈 등록 |
 | [improve-codebase-architecture](improve-codebase-architecture/) | 코드베이스 아키텍처 개선 기회 탐색 |
 | [write-a-skill](write-a-skill/) | 새 에이전트 스킬 생성 (구조, 점진적 공개, 번들 리소스) |
+| [html-work-report](html-work-report/) | 작업 시작 시 작성 여부를 확인하고 HTML 완료 보고서와 검증 증거 정리 (자작) |
+| [supertonic-tts](supertonic-tts/) | 로컬 Supertonic 3로 한국어 WAV 합성, 미설치 환경 준비와 CLI·HTTP 사용 안내 (자작) |
 
 </details>
 
@@ -76,15 +78,17 @@
 | 스킬 | 설명 |
 |------|------|
 | [agent-browser](agent-browser/) | AI 에이전트용 브라우저 자동화 CLI |
+| [browser-repro-video](browser-repro-video/) | 수정 전후를 브라우저에서 재현해 캡션·강조·커서가 보이는 mp4로 녹화(자막 파일도 지원)하고 정지 화면 5초 초과 검수, 날짜 붙은 보고서 폴더의 HTML에 embed (자작) |
 
 </details>
 
 <details>
-<summary><strong>📖 번역</strong></summary>
+<summary><strong>📖 번역 / 전자책</strong></summary>
 
 | 스킬 | 설명 |
 |------|------|
 | [translate-long-text](translate-long-text/) | 병렬 하위 에이전트로 긴 글(PDF/DOCX/EPUB/TXT/MD) 번역 |
+| [epub-for-ridi](epub-for-ridi/) | 리디북스용 EPUB 생성·검증·보정 — NCX 누락, 제목 위계, 왼쪽 정렬 (자작) |
 
 </details>
 

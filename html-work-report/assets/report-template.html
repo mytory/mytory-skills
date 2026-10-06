@@ -1,0 +1,112 @@
+<!doctype html>
+<!--
+  작업 완료 보고서 템플릿. "YYYY-MM-DD {주제 혹은 이슈번호}/YYYY-MM-DD {주제 혹은 이슈번호}.html"로 복사하고 {{ }} 자리와 주석을 채운 뒤 주석은 지운다.
+  폴더: YYYY-MM-DD {주제}/ ── 같은 이름의 .html, videos/, screenshots/(webp), evidence/, reviews/
+  규칙은 html-work-report 스킬의 SKILL.md. 해당 없는 절은 통째로 지운다(빈 절을 남기지 않는다).
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{이슈·주제}} 완료 보고</title>
+<style>
+  :root { --fg:#1f2933; --muted:#6b7280; --line:#e5e7eb; --bg:#fff; --soft:#f6f8fa; --accent:#1d6fb8; --ok:#15803d; --warn:#b45309; --bad:#b91c1c; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e5e7eb; --muted:#9ca3af; --line:#374151; --bg:#111827; --soft:#1f2937; --accent:#60a5fa; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; } }
+  body { margin:0; padding:24px 16px 64px; background:var(--bg); color:var(--fg); font:1.25em/1.6 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  main { max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.6em; margin:0 0 4px; } h2 { font-size:1.3em; margin:40px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--line); } h3 { font-size:1.1em; margin:24px 0 8px; }
+  .meta { color:var(--muted); font-size:.9em; }
+  table { border-collapse:collapse; width:100%; margin:8px 0 16px; font-size:.92em; } th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--soft); }
+  code { background:var(--soft); padding:1px 5px; border-radius:4px; font:.88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .ok { color:var(--ok); font-weight:600; } .warn { color:var(--warn); font-weight:600; } .bad { color:var(--bad); font-weight:600; }
+  video { width:100%; max-width:1200px; border:1px solid var(--line); border-radius:6px; background:#000; }
+  figure { margin:12px 0 20px; } figure img { width:100%; border:1px solid var(--line); border-radius:6px; } figcaption { color:var(--muted); font-size:.85em; margin-top:4px; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:16px; }
+  .note { background:var(--soft); border-left:4px solid var(--accent); padding:10px 14px; margin:12px 0; border-radius:4px; }
+  ul { padding-left:20px; } li { margin:2px 0; }
+</style>
+</head>
+<body>
+<main>
+<h1>{{이슈·주제}} 완료 보고</h1>
+<p class="meta">{{YYYY-MM-DD}} · 브랜치 <code>{{branch}}</code> ({{기준 브랜치}} 기준, <strong>{{커밋 상태: 미커밋 / 커밋 abc1234 / 병합됨}}</strong>) · 작성: {{누가 무엇을 했는지}}</p>
+
+<!-- 1. 요약: 요청 항목마다 한 줄. 결과는 class="ok|warn|bad". "남은 외부 작업"(커밋·푸시·이슈 코멘트·전달)은 warn으로 마지막 줄에. -->
+<h2>1. 요약</h2>
+<table>
+<tr><th style="width:34%">항목</th><th>결과</th></tr>
+<tr><td>{{요청 항목}}</td><td class="ok">완료 — {{한 줄}}</td></tr>
+<tr><td>테스트</td><td class="ok">{{실행한 명령과 수치: 예) Java 560 통과, JS 299 통과, 빌드 성공}}</td></tr>
+<tr><td>남은 외부 작업</td><td class="warn">{{커밋·푸시, 이슈 코멘트, 전달 — 사용자 승인 필요}}</td></tr>
+</table>
+
+<!-- 2. 영상: browser-repro-video 스킬로 찍은 mp4. 상대 경로. 캡션이 영상에 박혀 있으면 <track>을 달지 않는다(겹침, file://에서는 막힘).
+     음성 설명을 입혔으면 -narrated.mp4를 주 영상으로 하고 "N문장·합계 M초·밀림 K초"를 한 줄 적는다. -->
+<h2>2. 영상</h2>
+<p><code>videos/{{final-narrated.mp4}}</code> — {{무엇과 무엇을 같은 조작으로 비교했는지. 캡션·음성 설명 유무.}}</p>
+<video controls preload="metadata" src="videos/{{final-narrated.mp4}}"></video>
+<table>
+<tr><th style="width:8%">구간</th><th>내용</th><th style="width:16%">시작</th></tr>
+<tr><td>1</td><td>{{보여 주는 것 — 무엇을 측정·판정했는지까지}}</td><td>0:00</td></tr>
+</table>
+
+<!-- 3. 요구사항·피드백 반영: 요청이 여러 건이거나 재보고일 때. 번호는 사용자가 준 순서 그대로. -->
+<h2>3. 요청 반영</h2>
+<table>
+<tr><th style="width:4%">#</th><th style="width:36%">요청</th><th>처리</th></tr>
+<tr><td>1</td><td>{{요청 원문 요지}}</td><td>{{무엇을 어떻게 바꿨는지 + 확인 방법/증거 파일}}</td></tr>
+</table>
+
+<!-- 4. 구현 내용: 기능마다 h3. "흐름(컨트롤러→서비스→저장소)"과 "왜 그렇게 했는지"를 2~4문장으로. 스크린샷은 webp, 확인 대상이 보이게 스크롤해서 찍은 것. -->
+<h2>4. 구현 내용</h2>
+<h3>4.1 {{기능명}} — <code>{{URL 또는 진입점}}</code></h3>
+<p>{{핵심 로직과 이유}}</p>
+<div class="grid2">
+<figure><img src="screenshots/final/{{01-설명.webp}}" alt=""><figcaption>{{이 화면에서 봐야 할 것}}</figcaption></figure>
+<figure><img src="screenshots/final/{{02-설명.webp}}" alt=""><figcaption>{{이 화면에서 봐야 할 것}}</figcaption></figure>
+</div>
+
+<!-- 전/후 비교는 형용사 말고 측정값으로. 값은 증거 파일(evidence/)에서 가져온다. -->
+<h3>4.2 수정 전/후 측정값 (<code>evidence/{{파일}}</code>)</h3>
+<table>
+<tr><th></th><th>수정 전</th><th>수정 후</th></tr>
+<tr><td>{{지표}}</td><td>{{값}}</td><td>{{값}}</td></tr>
+</table>
+
+<!-- 5. DB·외부 영향: 마이그레이션, 다른 팀에 전달할 것. 없으면 절 삭제. -->
+<h2>5. DB 마이그레이션과 전달 사항</h2>
+<ol>
+<li><code>{{sql 파일}}</code> — {{무엇을 바꾸는지}}. {{적용 상태}}</li>
+</ol>
+
+<!-- 6. 설계 결정: 사용자·리뷰어와 갈린 쟁점만. 누가 정했는지 적는다. -->
+<h2>6. 설계 결정</h2>
+<table>
+<tr><th style="width:28%">쟁점</th><th>결정</th><th style="width:32%">이유</th></tr>
+<tr><td>{{쟁점}}</td><td>{{결정 (사용자 결정 / 내 판단)}}</td><td>{{이유}}</td></tr>
+</table>
+
+<!-- 7. 리뷰 루프: 회차별 건수와 조치. 원문은 reviews/에 두고 링크만. -->
+<h2>7. 리뷰 루프</h2>
+<table>
+<tr><th>회차</th><th>{{리뷰어 A}}</th><th>{{리뷰어 B}}</th><th>브라우저</th><th>조치</th></tr>
+<tr><td>1</td><td>{{건수(심각도별)}}</td><td>{{건수}}</td><td>{{PASS/FAIL}}</td><td>{{무엇을 고쳤는지}}</td></tr>
+</table>
+<p class="meta">원문: <code>reviews/</code></p>
+
+<!-- 8. 검증: 실제로 실행한 것만. 못 한 것은 "미확인"으로 적는다. -->
+<h2>8. 검증</h2>
+<ul>
+<li>{{명령과 결과 수치}}</li>
+<li>{{브라우저 검증 방법, DB 원복 확인}}</li>
+<li>{{단위 테스트로 증명할 수 없어 수동 확인한 것}}</li>
+</ul>
+
+<!-- 9. 범위 밖·남은 위험: 고치지 않은 것과 이유. 영상·스크린샷에 반영되지 않은 변경이 있으면 여기에 적지 말고 다시 찍는다. -->
+<h2>9. 범위 밖·남은 위험</h2>
+<ul>
+<li>{{항목 — 왜 범위 밖인지, 어디에 기록했는지}}</li>
+</ul>
+</main>
+</body>
+</html>
