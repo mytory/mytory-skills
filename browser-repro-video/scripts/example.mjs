@@ -1,5 +1,6 @@
 // 사용 예시 겸 스모크 테스트.
-// 실행: node example.mjs <출력.mp4> [--freeze=초] [--no-burn]   → 출력.mp4, 출력.srt, 출력.vtt
+// 실행: node example.mjs <출력.mp4> [--freeze=초] [--no-burn] [--overlay]   → 출력.mp4, 출력.srt, 출력.vtt
+// 기본(띠 모드): 캡션·패널을 화면 밖 띠에 그려 1440x1220 영상이 나온다. --overlay: 예전처럼 페이지 위에 덧그림(1440x900).
 // --no-burn: 캡션을 화면에 박지 않고 자막 파일만 만든다.
 // "TODO(프로젝트)" 표시된 곳이 프로젝트마다 채울 부분이다. 나머지는 그대로 쓴다.
 import {writeFileSync, mkdtempSync} from 'node:fs';
@@ -9,6 +10,7 @@ import {pathToFileURL} from 'node:url';
 import {openRecording, caption, highlight, notePanel, tablePanel, humanClick, humanType, holdToRead, saveVideo, saveCaptions, COLORS} from './rec-lib.mjs';
 
 const out = process.argv[2] ?? 'smoke.mp4';
+const overlay = process.argv.includes('--overlay');
 const freezeArg = process.argv.find(a => a.startsWith('--freeze='));
 const burn = !process.argv.includes('--no-burn');
 const freezeSec = freezeArg ? Number(freezeArg.split('=')[1]) : 0; // 일부러 정지 화면을 만들어 검사 스크립트를 시험할 때만 쓴다
@@ -25,7 +27,7 @@ writeFileSync(demo, `<!doctype html><meta charset=utf-8><body style="font:18px s
 // TODO(프로젝트): 상태별 서버 주소. 실제로는 수정 전/후 서버를 포트로 나눠 띄운다.
 const states = [{tag: 'before', title: '수정 전 (master)', url: pathToFileURL(demo).href}];
 
-const {browser, context, page} = await openRecording({videoDir: work});
+const {browser, context, page} = await openRecording({videoDir: work, overlay});
 for (const s of states) {
     // TODO(프로젝트): 로그인 등 준비 동작
     await page.goto(s.url);

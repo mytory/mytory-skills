@@ -2,9 +2,15 @@
 // 의존성: playwright-core (시스템 Chrome 사용), ffmpeg.
 import {chromium} from 'playwright-core';
 import {execFileSync} from 'node:child_process';
-import {writeFileSync} from 'node:fs';
+import {writeFileSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 
 export const COLORS = {head: '#1f3a93', bad: '#9f1239', good: '#166534'};
+
+// 띠 모드(기본)에서 캡션·패널 글자를 그리는 한글 글꼴. 없으면 saveVideo가 오류로 알린다. 다른 글꼴은 환경 변수 REC_FONT로 지정.
+const FONT = process.env.REC_FONT ?? '/System/Library/Fonts/AppleSDGothicNeo.ttc';
+const BAND = {captionSize: 26, captionLine: 34, panelSize: 22, panelLine: 30, pad: 8, topBg: '#222222', bottomBg: '#f3f4f6'};
 
 // headless 녹화에는 커서가 찍히지 않으므로 마우스를 따라다니는 점(클릭 시 커졌다 줄어듦)을 페이지에 그려 넣는다.
 const cursorOverlayScript = () => {
@@ -32,7 +38,11 @@ const cursorOverlayScript = () => {
 };
 
 // 녹화 세션을 연다. 로그인 등 준비는 호출 쪽에서 한다. videoDir를 주면 녹화하고 커서 오버레이를 켠다.
-export async function openRecording({videoDir, width = 1440, height = 900, cookies = []}) {
+// 캡션·패널 표시 방식:
+//  - 기본(띠 모드): 페이지에는 아무것도 덧그리지 않고 기록만 한다. saveVideo가 영상 위(topBand px)·아래(bottomBand px)에 띠를 덧붙여 그 안에 그린다.
+//    결과 해상도는 width x (height + topBand + bottomBand). 같은 값으로 찍은 클립끼리만 concat할 수 있다.
+//  - overlay: true: 예전 방식. 페이지 위에 배너·패널을 덧그린다(화면을 가린다). 해상도는 width x height 그대로.
+export async function openRecording({videoDir, width = 1440, height = 900, cookies = [], overlay = false, topBand = 120, bottomBand = 200}) {
     const browser = await chromium.launch({channel: 'chrome', headless: true});
     const context = await browser.newContext({
         viewport: {width, height},
@@ -46,7 +56,17 @@ export async function openRecording({videoDir, width = 1440, height = 900, cooki
     // 영상의 0초는 페이지 생성이 아니라 첫 화면이 그려진 시점이다(실측: 빈 페이지를 한 번 그린 직후). 그래서 먼저 빈 화면을 그리고 그 직후를 기준 시각으로 잡는다.
     await page.goto('data:text/html,<body style="margin:0;background:%23fff">');
     const t0 = Date.now();
-    records.set(page, {t0, cues: [], last: null, end: null});
+    const even = n => Math.ceil(n / 2) * 2;
+    const rec = {t0, cues: [], last: null, end: null, overlay, width, height, topBand: even(topBand), bottomBand: even(bottomBand), panels: []};
+    records.set(page, rec);
+    if (!overlay) {
+        // 페이지 이동하면 패널이 사라지던 예전 동작과 맞추기 위해 주 프레임 이동 시 열린 패널을 닫는다(캡션은 유지).
+        page.on('framenavigated', frame => {
+            if (frame === page.mainFrame()) {
+                closePanels(rec);
+            }
+        });
+    }
     return {browser, context, page};
 }
 
@@ -109,12 +129,74 @@ const drawBanner = (page, text, color) => page.evaluate(([text, color]) => {
     el.style.background = color;
     el.textContent = text;
 }, [text, color]);
+
+// --- 띠 모드 글자 배치 ---
+// 글자 폭 추정(한글·전각은 1em, 그 밖은 0.6em)으로 줄바꿈한다. 단어(공백 기준) 단위로 채우고 단어가 한 줄보다 길면 글자 단위로 자른다.
+const charW = (ch, size) => (ch.codePointAt(0) >= 0x1100 ? size : size * 0.6);
+const textW = (t, size) => [...t].reduce((a, ch) => a + charW(ch, size), 0);
+function wrapText(text, size, maxW) {
+    const out = [];
+    for (const para of text.split('\n')) {
+        let line = '';
+        for (const word of para.split(/(?<= )/)) {
+            if (textW(line + word, size) <= maxW) {
+                line += word;
+                continue;
+            }
+            if (line.trim()) {
+                out.push(line.trimEnd());
+                line = '';
+            }
+            for (const ch of word) {
+                if (textW(line + ch, size) > maxW) {
+                    out.push(line);
+                    line = '';
+                }
+                line += ch;
+            }
+        }
+        out.push(line.trimEnd());
+    }
+    return out;
+}
+const maxLines = (band, lineH) => Math.floor((band - BAND.pad * 2) / lineH);
+const closePanels = rec => {
+    for (const p of rec.panels) {
+        if (p.end === null) {
+            p.end = nowMs(rec);
+        }
+    }
+};
+// 같은 slot('note'|'table')의 이전 패널을 닫고 새 패널을 기록한다. items: [{text, color?, head?}]
+function addPanel(rec, slot, items) {
+    for (const p of rec.panels) {
+        if (p.slot === slot && p.end === null) {
+            p.end = nowMs(rec);
+        }
+    }
+    const lines = items.flatMap(it => wrapText(it.text, BAND.panelSize, rec.width - 40).map(text => ({text, color: it.color ?? '#111111', head: !!it.head})));
+    const cap = maxLines(rec.bottomBand, BAND.panelLine);
+    if (lines.length > cap) {
+        throw new Error(`패널이 ${lines.length}줄이라 아래 띠(${cap}줄)에 안 들어간다. openRecording({bottomBand})를 늘리거나 내용을 줄인다.`);
+    }
+    rec.panels.push({slot, start: nowMs(rec), end: null, lines});
+}
+
 export async function caption(page, text, {color = COLORS.head, burn = true} = {}) {
     const rec = recordOf(page);
     closeOpenCue(rec);
-    rec.cues.push({start: nowMs(rec), end: null, text});
+    const cue = {start: nowMs(rec), end: null, text};
+    if (!rec.overlay) {
+        const lines = wrapText(text, BAND.captionSize, rec.width - 40);
+        const cap = maxLines(rec.topBand, BAND.captionLine);
+        if (burn && lines.length > cap) {
+            throw new Error(`캡션이 ${lines.length}줄이라 위 띠(${cap}줄)에 안 들어간다. 캡션을 줄이거나 openRecording({topBand})를 늘린다.`);
+        }
+        Object.assign(cue, {color, burn, lines});
+    }
+    rec.cues.push(cue);
     rec.last = [text, color, burn];
-    if (burn) {
+    if (burn && rec.overlay) {
         await drawBanner(page, text, color);
     }
 }
@@ -124,10 +206,11 @@ export async function clearCaption(page) {
     rec.last = null;
     await page.evaluate(() => document.getElementById('__rec_banner')?.remove());
 }
+// 띠 모드에서는 캡션이 페이지 밖이라 이동해도 유지되므로 할 일이 없다.
 export async function reapplyCaption(page) {
-    const last = recordOf(page).last;
-    if (last && last[2]) {
-        await drawBanner(page, last[0], last[1]);
+    const rec = recordOf(page);
+    if (rec.overlay && rec.last && rec.last[2]) {
+        await drawBanner(page, rec.last[0], rec.last[1]);
     }
 }
 // 호환용 이름
@@ -180,7 +263,16 @@ export async function highlight(page, items) {
 
 // 설명 패널. 앱 화면의 핵심을 가리지 않는 위치(css의 top/left/bottom 등)에 둔다.
 // lines: [{text, ok}] — ok가 true면 초록, false면 빨강, 없으면 검정.
+// 띠 모드(기본)에서는 css를 무시하고 아래 띠에 그린다. 같은 종류(note)의 새 패널이 이전 패널을 대체하고, 페이지 이동하면 닫힌다.
 export async function notePanel(page, {heading = '', lines, css = 'bottom:16px;left:252px;width:1164px'}) {
+    const rec = recordOf(page);
+    if (!rec.overlay) {
+        addPanel(rec, 'note', [
+            ...(heading ? [{text: heading, head: true}] : []),
+            ...lines.map(({text, ok}) => ({text, color: ok === undefined ? '#111111' : ok ? '#16a34a' : '#e11d48'})),
+        ]);
+        return;
+    }
     await page.evaluate(({heading, lines, css}) => {
         document.getElementById('__rec_note')?.remove();
         const panel = document.createElement('div');
@@ -205,7 +297,30 @@ export async function notePanel(page, {heading = '', lines, css = 'bottom:16px;l
 // 표 패널. rows: 객체 배열, columns: 표시할 열, keyColumn: 행을 맞추는 열.
 // after를 주면 "이전 → 이후"로 바뀐 칸을 빨갛게 표시하고, 새 행·삭제된 행도 표시한다.
 // rows/after는 실제 조회 결과(DB 조회, 응답 JSON)에서 만든 것이어야 한다. 하드코딩 금지.
+// 띠 모드(기본)에서는 표를 "열=값" 줄로 풀어 아래 띠에 글자로 그린다(바뀐 칸이 있는 행은 빨강, 값은 "이전 → 이후"). css는 무시.
 export async function tablePanel(page, {heading, columns, keyColumn, before, after = null, css = 'bottom:16px;left:252px'}) {
+    const rec = recordOf(page);
+    if (!rec.overlay) {
+        const fmt = v => (v === null || v === undefined ? 'NULL' : String(v));
+        const keys = [...new Set([...before.map(r => r[keyColumn]), ...(after ?? before).map(r => r[keyColumn])])]
+            .sort((a, b) => (a > b ? 1 : a < b ? -1 : 0));
+        const items = [{text: heading, head: true}];
+        for (const key of keys) {
+            const b = before.find(r => r[keyColumn] === key);
+            const a = after ? after.find(r => r[keyColumn] === key) : b;
+            let changed = false;
+            const cells = columns.map(c => {
+                const bv = b?.[c], av = a?.[c];
+                const diff = after && (!b || !a || fmt(bv) !== fmt(av));
+                changed ||= diff;
+                const text = !after ? fmt(bv) : !b ? `${fmt(av)} (새 행)` : !a ? `${fmt(bv)} (삭제됨)` : diff ? `${fmt(bv)} → ${fmt(av)}` : fmt(av);
+                return `${c}=${text}`;
+            });
+            items.push({text: cells.join('   '), color: changed ? '#e11d48' : '#111111'});
+        }
+        addPanel(rec, 'table', items);
+        return;
+    }
     await page.evaluate(({heading, columns, keyColumn, before, after, css}) => {
         document.getElementById('__rec_table')?.remove();
         const fmt = v => (v === null || v === undefined ? 'NULL' : String(v));
@@ -248,14 +363,81 @@ export async function captureResponse(page, urlPart, outPath, trigger, timeout =
 }
 // 요청 본문도 남기려면 page.on('request', ...)로 따로 가로챈다. (예: request.postData())
 
+// 띠 모드: 영상 위·아래에 띠를 덧붙이고 기록한 캡션·패널을 시각에 맞춰 drawtext로 그린다.
+function bandFilter(rec, dir) {
+    if (!existsSync(FONT)) {
+        throw new Error(`한글 글꼴이 없다: ${FONT}. 환경 변수 REC_FONT로 .ttf/.ttc 경로를 지정한다.`);
+    }
+    const {width, height, topBand, bottomBand} = rec;
+    const total = rec.end;
+    const sec = ms => (ms / 1000).toFixed(3);
+    const hex = c => '0x' + c.replace('#', '');
+    let n = 0;
+    const text = (str, {x, y, size, color, bold, a, b}) => {
+        const file = join(dir, `t${n++}.txt`);
+        writeFileSync(file, str);
+        return `drawtext=fontfile='${FONT}':textfile='${file}':expansion=none:fontsize=${size}:fontcolor=${hex(color)}`
+            + (bold ? `:borderw=1:bordercolor=${hex(color)}` : '') + `:x=${x}:y=${y}:enable='between(t,${sec(a)},${sec(b)})'`;
+    };
+    const f = [`pad=${width}:${height + topBand + bottomBand}:0:${topBand}:color=${hex(BAND.topBg)}`,
+        `drawbox=x=0:y=${topBand + height}:w=iw:h=${bottomBand}:color=${hex(BAND.bottomBg)}:t=fill`];
+    for (const c of rec.cues.filter(c => c.burn && c.lines)) {
+        const a = c.start, b = c.end ?? total;
+        if (b <= a) {
+            continue;
+        }
+        f.push(`drawbox=x=0:y=0:w=iw:h=${topBand}:color=${hex(c.color)}:t=fill:enable='between(t,${sec(a)},${sec(b)})'`);
+        const blockH = c.lines.length * BAND.captionLine;
+        c.lines.forEach((line, i) => f.push(text(line, {
+            x: '(w-text_w)/2', y: Math.round((topBand - blockH) / 2) + i * BAND.captionLine + Math.round((BAND.captionLine - BAND.captionSize) / 2),
+            size: BAND.captionSize, color: '#ffffff', bold: true, a, b,
+        })));
+    }
+    // 패널: 시작·끝 시각으로 구간을 나누고, 구간마다 그 시각에 열린 패널들의 줄을 이어서 그린다.
+    const panels = rec.panels.map(p => ({...p, end: p.end ?? total}));
+    const points = [...new Set(panels.flatMap(p => [p.start, p.end]))].sort((x, y) => x - y);
+    const cap = maxLines(bottomBand, BAND.panelLine);
+    for (let k = 0; k < points.length - 1; k++) {
+        const [a, b] = [points[k], points[k + 1]];
+        const lines = panels.filter(p => p.start <= a && p.end >= b).flatMap(p => p.lines);
+        if (b - a < 20 || !lines.length) {
+            continue;
+        }
+        if (lines.length > cap) {
+            throw new Error(`${sec(a)}초 구간에 열린 패널이 합쳐 ${lines.length}줄이라 아래 띠(${cap}줄)에 안 들어간다. bottomBand를 늘리거나 패널을 줄인다.`);
+        }
+        lines.forEach((l, i) => f.push(text(l.text, {
+            x: 20, y: topBand + height + BAND.pad + i * BAND.panelLine + Math.round((BAND.panelLine - BAND.panelSize) / 2),
+            size: BAND.panelSize, color: l.color, bold: l.head, a, b,
+        })));
+    }
+    return f.join(',');
+}
+
 // 녹화를 끝내고 webm을 mp4로 바꿔 저장한다. 변환 옵션은 ffmpeg 기본(libx264 CRF 23)으로 충분하다(분당 1MB 안팎, references/report.md).
+// 띠 모드(기본)면 이때 캡션 띠·패널 띠를 영상에 입힌다.
 export async function saveVideo(context, page, mp4Path) {
     const video = page.video();
     const rec = recordOf(page);
     closeOpenCue(rec);
+    closePanels(rec);
     rec.end = nowMs(rec);
     await context.close();
     const webm = await video.path();
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', webm, '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4Path]);
+    const args = ['-y', '-loglevel', 'error', '-i', webm];
+    let dir = null;
+    try {
+        if (!rec.overlay) {
+            dir = mkdtempSync(join(tmpdir(), 'rec-band-'));
+            const vf = bandFilter(rec, dir);
+            writeFileSync(join(dir, 'filter.txt'), vf);
+            args.push('-filter_script:v', join(dir, 'filter.txt'));
+        }
+        execFileSync('ffmpeg', [...args, '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4Path]);
+    } finally {
+        if (dir) {
+            rmSync(dir, {recursive: true, force: true});
+        }
+    }
     return mp4Path;
 }
