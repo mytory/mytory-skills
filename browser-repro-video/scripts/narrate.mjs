@@ -11,9 +11,13 @@
 import {execFileSync, spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import {fileURLToPath} from 'node:url';
 
-const PYTHON = '~/Supertonic/.venv/bin/python';
+// Supertonic 가상환경의 python. supertonic-tts 스킬의 기본 설치 위치(홈의 Supertonic/.venv)를 쓰고,
+// 다른 곳에 설치했으면 SUPERTONIC_PYTHON 환경 변수로 지정한다.
+// '~'는 셸이 아니면 홈으로 풀리지 않으므로 os.homedir()로 만든다.
+const PYTHON = process.env.SUPERTONIC_PYTHON ?? path.join(os.homedir(), 'Supertonic', '.venv', 'bin', 'python');
 const TTS_BATCH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'tts-batch.py');
 const GAP = 0.25;          // 앞 음성과 뒤 음성 사이 최소 간격(초)
 const DRIFT_LIMIT = 2.0;   // 이보다 밀리면 화면과 설명이 어긋난다고 본다
@@ -57,6 +61,11 @@ const inputJson = path.join(workDir, 'cues.json');
 fs.writeFileSync(inputJson, JSON.stringify(cues.map((c, i) => ({id: String(i + 1).padStart(3, '0'), text: c.text}))));
 // stderr(진행 로그)는 그대로 흘리고 stdout(JSON)만 받는다
 const tts = spawnSync(PYTHON, [TTS_BATCH, '--input', inputJson, '--out-dir', workDir, '--voice', voice, '--lang', lang], {encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'inherit']});
+if (tts.error) {
+    // 실행 파일을 찾지 못하면 status가 null이라 조용히 끝났다. 원인을 알리고 실패로 끝낸다.
+    console.error(`음성 합성을 실행하지 못했다: ${PYTHON} (${tts.error.message}). supertonic-tts 스킬로 환경을 준비하거나 SUPERTONIC_PYTHON을 지정한다.`);
+    process.exit(1);
+}
 if (tts.status !== 0) process.exit(tts.status ?? 1);
 const clips = JSON.parse(tts.stdout);
 

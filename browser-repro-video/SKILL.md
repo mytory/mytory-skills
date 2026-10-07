@@ -45,6 +45,7 @@ npm ls playwright-core || npm i playwright-core   # 작업 폴더(스크래치�
      - 기본 noise 0.0005. 커서 이동·타이핑 같은 작은 변화는 noise가 크면 "정지"로, 너무 작으면(0.0002 이하) 인코딩 잡음이 "움직임"으로 판정된다. 애매하면 0.0003과 0.001로 돌려 보고, 의심 구간은 프레임을 뽑아 눈으로 확인한다. 스피너·깜빡이는 커서가 있는 화면도 눈으로 확인.
 8. **음성 설명(내레이션)을 입힌다 — 요청이 있거나 보고 대상이 영상만 볼 사람일 때.** 캡션(`.srt`)을 Supertonic 3 한국어 음성으로 만들어 큐 시각에 맞춰 mp4에 합친다. [references/narration.md](references/narration.md)
    - 먼저 `node scripts/narrate.mjs 영상.mp4 --plan`: 합성만 하고 큐별 **음성 길이 vs 장면 길이**를 표로 낸다. 음성이 장면보다 길면(초과) 캡션을 줄이거나 그 장면의 `hold`를 늘려 다시 찍는다. 밀림(드리프트)이 2초를 넘는 큐도 같은 처리.
+   - 음성 합성은 홈의 `Supertonic/.venv/bin/python`(supertonic-tts 스킬의 기본 설치 위치)을 쓴다. 다른 곳에 설치했으면 `SUPERTONIC_PYTHON` 환경 변수로 지정한다. 찾지 못하면 원인을 출력하고 실패한다.
    - 통과하면 `node scripts/narrate.mjs 영상.mp4` → `영상-narrated.mp4`. 영상 트랙은 복사된다. 정지 검사는 10초 기준(`check-freeze.sh 영상.mp4 10`)으로 다시 돌린다.
    - 캡션은 **읽히는 문장**으로 쓴다. URL·경로·해시·기호가 많은 캡션은 화면용 `.srt`와 별도로 읽기용 `.srt`(큐 시각 동일)를 만들어 `--srt`로 넘긴다. 자주 쓰는 기호(`→ · ≤ + % px` 등)는 `tts-batch.py`의 `SPOKEN` 표가 말로 바꾸고, 모델이 거부하는 문자는 지우고 다시 합성한다.
    - 합성은 큐당 수 초가 걸린다(58큐 ≈ 8분). 결과는 `출력 폴더/.narration/`에 캐시되어 같은 문장은 다시 만들지 않는다.
