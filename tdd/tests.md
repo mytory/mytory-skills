@@ -59,3 +59,19 @@ test("createUser가 사용자를 조회 가능하게 만든다", async () => {
   expect(retrieved.name).toBe("Alice");
 });
 ```
+
+**동어반복 테스트**: 기대값을 구현과 같은 방식으로 계산하면 구조상 통과하도록 만들어진 테스트입니다.
+
+```typescript
+// 나쁨: 코드와 같은 방식으로 기대값 계산
+test("calculateTotal이 항목 금액을 합산한다", () => {
+  const items = [{ price: 10 }, { price: 5 }];
+  const expected = items.reduce((sum, item) => sum + item.price, 0);
+  expect(calculateTotal(items)).toBe(expected);
+});
+
+// 좋음: 독립적으로 알려진 정답 사용
+test("calculateTotal이 항목 금액을 합산한다", () => {
+  expect(calculateTotal([{ price: 10 }, { price: 5 }])).toBe(15);
+});
+```

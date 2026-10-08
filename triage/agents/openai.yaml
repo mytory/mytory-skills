@@ -1,0 +1,5 @@
+interface:
+  display_name: "이슈 분류"
+  short_description: "이슈를 분류 역할에 따라 관리"
+policy:
+  allow_implicit_invocation: false

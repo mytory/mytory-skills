@@ -468,7 +468,7 @@ def parse_structural_blocks(content):
     """Parse markdown into structural blocks that should not be split.
 
     Returns list of (text, block_type) tuples where block_type is one of:
-    'heading', 'code_block', 'table', 'list', 'blockquote', 'image', 'paragraph'
+    'heading', 'code_block', 'math_block', 'table', 'list', 'blockquote', 'image', 'paragraph'
     """
     blocks = []
     lines = content.split('\n')
@@ -490,6 +490,25 @@ def parse_structural_blocks(content):
                 i += 1
             blocks.append(('\n'.join(block_lines), 'code_block'))
             continue
+
+        # Display math must remain in one chunk, even when it contains list or table syntax.
+        if stripped.startswith('$$'):
+            if len(stripped) >= 4 and stripped.endswith('$$'):
+                blocks.append((line, 'math_block'))
+                i += 1
+                continue
+            end = None
+            for j in range(i + 1, len(lines)):
+                next_line = lines[j].strip()
+                if not next_line:
+                    break
+                if next_line.endswith('$$'):
+                    end = j
+                    break
+            if end is not None:
+                blocks.append(('\n'.join(lines[i:end + 1]), 'math_block'))
+                i = end + 1
+                continue
 
         # Heading
         if re.match(r'^#{1,6}\s', stripped):
@@ -560,7 +579,7 @@ def parse_structural_blocks(content):
         i += 1
         while i < len(lines):
             s = lines[i].strip()
-            if (s == '' or s.startswith('```') or re.match(r'^#{1,6}\s', s) or
+            if (s == '' or s.startswith('```') or s.startswith('$$') or re.match(r'^#{1,6}\s', s) or
                     s.startswith('>') or s.startswith('|') or
                     re.match(r'^[-*+]\s', s) or re.match(r'^\d+\.\s', s) or
                     re.match(r'!\[', s)):

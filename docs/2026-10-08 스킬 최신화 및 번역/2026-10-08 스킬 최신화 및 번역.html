@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스킬 최신화 및 번역 완료 보고</title>
+<style>
+:root { --fg:#1f2933; --muted:#6b7280; --line:#e5e7eb; --bg:#fff; --soft:#f6f8fa; --ok:#15803d; --warn:#b45309; }
+@media (prefers-color-scheme:dark) { :root { --fg:#e5e7eb; --muted:#9ca3af; --line:#374151; --bg:#111827; --soft:#1f2937; --ok:#4ade80; --warn:#fbbf24; } }
+body { margin:0; padding:24px 16px 64px; background:var(--bg); color:var(--fg); font:1.1em/1.6 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+main { max-width:1100px; margin:auto; } h1 { font-size:1.6em; } h2 { margin:36px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; font-size:1.25em; }
+table { border-collapse:collapse; width:100%; margin:8px 0 16px; } th,td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; } th { background:var(--soft); }
+code { background:var(--soft); padding:1px 5px; border-radius:4px; } .ok { color:var(--ok); font-weight:600; } .warn { color:var(--warn); font-weight:600; } .meta { color:var(--muted); }
+a { color:inherit; }
+</style>
+</head>
+<body><main>
+<h1>스킬 최신화 및 번역 완료 보고</h1>
+<p class="meta">2026-10-08 · 작업 디렉터리의 미커밋 변경 사항</p>
+
+<h2>1. 요약</h2>
+<table><tr><th>요청</th><th>결과</th></tr>
+<tr><td>mattpocock 스킬 최신화 및 한국어 번역</td><td class="ok">최신 원본 <code>f3fc563</code> 기준. 동명 7개 갱신, 개명된 대응 스킬 6개 전환, 직접 의존 스킬 3개 추가. 원본에서 사라진 기존 5개는 보존.</td></tr>
+<tr><td>Open Code Review 스킬 확인</td><td class="ok">원본 <code>2d67596</code> 기준 <code>open-code-review</code> 변경 2건 반영. <code>open-code-review-delegate</code>는 최신 내용과 일치.</td></tr>
+<tr><td>다른 출처의 스킬 확인 및 갱신</td><td class="ok">5개 출처의 7개 스킬을 대조. 필요한 지침과 리소스를 반영하고 로컬 확장은 유지.</td></tr>
+<tr><td>월간 최신화 스킬</td><td class="ok"><code>update-skills</code>와 최근 수행 기록을 추가하고, 다음 저장소 작업 시 점검하는 규칙을 <code>AGENTS.md</code>에 연결.</td></tr>
+<tr><td>검증</td><td class="ok">36개 스킬의 호출 이름·README 링크 일치, YAML 52개 파싱, 문서 링크·민감 정보 패턴·스크립트 구문 점검.</td></tr>
+<tr><td>남은 외부 작업</td><td class="warn">커밋과 푸시는 수행하지 않음.</td></tr>
+</table>
+
+<h2>2. 요청 반영</h2>
+<table><tr><th>#</th><th>요청</th><th>처리와 확인</th></tr>
+<tr><td>1</td><td>mattpocock 스킬을 최신 버전으로 업데이트하고 번역</td><td>원본 구조와 호출 관계를 대조해 16개 최신 대응 스킬을 반영. 영어 <code>name</code>과 명령어를 유지. <a href="../../README.md">README 목록</a>과 YAML 검증으로 확인.</td></tr>
+<tr><td>2</td><td>오픈 코드 리뷰 스킬도 최신 버전이 있으면 업데이트하고 번역</td><td>최신 원본과 두 스킬을 대조하고 필요한 변경만 반영. 한국어 설명을 유지.</td></tr>
+<tr><td>3</td><td>다른 출처 스킬 확인, 조사 후 업데이트</td><td>taste-skill, agent-browser, anthropics/skills, ctxrs/ctx, translate-book의 최신 원본과 대조. 로컬 고유 기능과 지원 스크립트를 확인 후 반영.</td></tr>
+<tr><td>4</td><td>스킬 호출 이름은 영어 유지</td><td>모든 <code>SKILL.md</code>의 YAML <code>name</code>과 디렉터리 이름 일치 확인.</td></tr>
+<tr><td>5</td><td>스킬 최신화를 월 1회 자율 실행하고 최신 수행 기록만 유지</td><td><a href="../../update-skills/SKILL.md"><code>update-skills</code></a>와 <a href="../../update-skills/LAST_RUN.md">최근 수행 기록</a>을 추가. <a href="../../AGENTS.md"><code>AGENTS.md</code></a>가 마지막 처리일의 연·월을 확인하도록 연결.</td></tr>
+</table>
+
+<h2>3. 적용 범위와 결정</h2>
+<p>사용자 선택에 따라 이름이 바뀐 스킬도 새 이름으로 전환했다. 최신 스킬에서 직접 호출하는 <code>setup-matt-pocock-skills</code>, <code>grilling</code>, <code>domain-modeling</code>을 추가했다. 원본에 없는 <code>caveman</code>, <code>edit-article</code>, <code>obsidian-vault</code>, <code>request-refactor-plan</code>, <code>zoom-out</code>은 기존 번역을 보존했다.</p>
+<p><code>ctx-agent-history-search</code>와 <code>translate-long-text</code>는 로컬 목적에 맞게 조정된 스킬이다. 최신 원본의 호환 가능한 지침을 선택해 반영하고 기존 TXT 처리 등 로컬 기능을 유지했다.</p>
+<p><code>update-skills</code>의 마지막 처리일은 2026-10-08이다. 예약 실행 기능을 쓰지 않으므로 2026-11월에 저장소를 다루는 첫 작업에서 실행된다. 성공·실패와 관계없이 기록은 <code>LAST_RUN.md</code> 한 파일을 덮어쓴다.</p>
+
+<h2>4. 검증 기록</h2>
+<table><tr><th>검사</th><th>결과</th></tr>
+<tr><td>스킬 수, README 링크, YAML <code>name</code></td><td>스킬 36개, README 링크 36개, 이름 불일치 0개</td></tr>
+<tr><td>YAML 구문</td><td><code>SKILL.md</code>와 <code>agents/openai.yaml</code> 총 52개 파싱 성공</td></tr>
+<tr><td>문서 상대 링크</td><td>검사한 스킬 24개에서 실제 누락 0개. 예시 경로 3개는 생성할 문서의 예시로 확인</td></tr>
+<tr><td>공개 저장소 민감 정보 패턴</td><td>검사한 스킬 파일과 README에서 개인 절대 경로·토큰·개인키 패턴 일치 0개</td></tr>
+<tr><td>스크립트와 패치</td><td><code>diagnosing-bugs</code> Bash 구문 검사, 번역 스크립트 Python 구문·수식 스모크 검사, <code>git diff --check</code> 통과</td></tr>
+</table>
+<p class="meta">원본 출처와 기준 커밋은 <a href="../../README.md">README.md의 출처 표</a>에 기록했다. Git 작성자 메타데이터와 기존 이력의 개인정보 여부는 이 파일 내용 검사에 포함되지 않는다.</p>
+</main></body></html>

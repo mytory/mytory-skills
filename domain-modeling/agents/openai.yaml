@@ -1,0 +1,3 @@
+interface:
+  display_name: "도메인 모델링"
+  short_description: "도메인 모델을 만들고 정교화합니다"

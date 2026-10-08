@@ -434,7 +434,8 @@ def convert_with_pandoc(md_file, html_file, title, lang_attr):
         '--metadata', f'title={title}',
         '--metadata', f'lang={lang_attr}',
         '--from', 'markdown+smart+east_asian_line_breaks',
-        '--to', 'html5'
+        '--to', 'html5',
+        '--mathml'
     ]
 
     try:

@@ -28,6 +28,8 @@ metadata: {"openclaw":{"requires":{"bins":["python3","pandoc","ebook-convert"],"
 - **target_lang**: 대상 언어 코드 (기본값: `zh`) — 예: zh, en, ja, ko, fr, de, es
 - **concurrency**: 배치당 병렬 하위 에이전트 수 (기본값: `8`)
 - **temp_root**: `{filename}_temp/`를 만들 상위 디렉토리 (선택, 기본값: 현재 작업 디렉토리)
+- **epub_cover**: EPUB에 사용할 표지 이미지 경로 (선택)
+- **export_name**: 사용자에게 제공할 출력 파일명의 이름 부분 (선택)
 - **custom_instructions**: 사용자의 추가 번역 지시사항 (선택)
 
 파일 경로가 제공되지 않으면 사용자에게 물어보세요.
@@ -39,6 +41,15 @@ metadata: {"openclaw":{"requires":{"bins":["python3","pandoc","ebook-convert"],"
 ```bash
 python3 {baseDir}/scripts/convert.py "<file_path>" --olang "<target_lang>"
 ```
+
+학술·기술 PDF에서 수식, 표, 다단 레이아웃이 Calibre 변환 중 손상될 수 있습니다.
+레이아웃을 인식하는 파서가 이미 설치되어 있거나 사용자가 요청했다면
+그 도구로 Markdown을 먼저 추출한 뒤 `.md` 파일을 `convert.py`에 입력하세요.
+예: MinerU 4 이상은 `mineru-kit parse "<file_path>" -o "<name>.md"`,
+Marker는 `marker_single "<file_path>" --output_dir "<dir>"`를 사용할 수 있습니다.
+옵션은 설치된 버전의 `--help`로 확인하세요. 대형 모델을 내려받는 파서는
+사용자 동의 없이 설치하지 마세요. 현재 로컬 Markdown 입력은 이미지 파일을
+temp 디렉토리로 복사하지 않으므로 이미지 참조 경로를 별도로 확인하세요.
 
 선택적 인자:
 - `--temp-root "<dir>"` — temp 디렉토리 위치 지정
@@ -63,9 +74,8 @@ Glob: {filename}_temp/chunk*.md
 Glob: {filename}_temp/output_chunk*.md
 ```
 
-소스 파일은 있지만 해당하는 `output_` 파일이 없는 청크 집합을 계산하세요. 이 청크들이 번역해야 할 대상입니다.
-
-모든 청크에 이미 번역이 있다면 6단계로 건너뛰세요.
+소스 청크 목록을 확인하세요. 이번 실행의 번역 대상은 용어집을 준비한 다음
+`run_state.py`로 정합니다.
 
 ## 4. 용어집 구축 (용어 일관성)
 
@@ -103,7 +113,21 @@ Glob: {filename}_temp/output_chunk*.md
 
    이 명령은 모든 `chunk*.md`(`output_chunk*.md` 제외)를 스캔하고 각 용어의 `frequency` 필드를 업데이트한 후 원자적으로 다시 작성합니다.
 
-용어집은 수동 편집이 가능합니다. 부분 실행 후 사용자가 `target` 필드를 편집해도 괜찮습니다 — 해당 청크가 자동으로 재번역되지는 않습니다.
+용어집은 수동 편집이 가능합니다. `target`, `aliases`, `category`를 바꾸면
+아래 계획 단계에서 영향을 받는 청크만 선택적으로 재번역합니다.
+
+### 선택적 재번역 계획
+
+```bash
+python3 {baseDir}/scripts/run_state.py plan "<temp_dir>"
+```
+
+`translation_chunk_ids`가 이번 작업 목록입니다. `record_only_chunk_ids`가 있으면
+`python3 {baseDir}/scripts/run_state.py record "<temp_dir>" chunk0001 ...`로
+기존 유효 출력을 기록하세요. `unchanged_chunk_ids`는 그대로 둡니다.
+기존 `run_state.json`이 없는 출력에도 용어집 편집을 적용하라는 명시적 요청이
+있을 때만 `plan`에 `--retranslate-untracked`를 붙이세요.
+`translation_chunk_ids`가 비어 있으면 번역 배치를 건너뛰세요.
 
 ## 5. 병렬 번역 (하위 에이전트)
 
@@ -125,6 +149,9 @@ API rate limit을 준수하기 위해 청크를 배치로 실행하세요:
 - 대상 언어
 - 번역 프롬프트 (아래 참조)
 - 청크별 용어 테이블 (아래 "용어 테이블 조립" 참조)
+- 이웃 청크의 읽기 전용 문맥. 필요하면
+  `python3 {baseDir}/scripts/chunk_context.py "<temp_dir>" "chunk<NNNN>.md"`로
+  추출하세요. 번역 대상은 담당 청크 하나뿐입니다.
 - 모든 사용자 정의 지시사항
 
 **용어 테이블 조립** — 하위 에이전트를 생성하기 전에 실행:
@@ -310,6 +337,10 @@ stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) �
 
 이전에 중단된 배치 후 새로 실행하면 `prepare-merge`는 남겨진 메타 파일을 모두 선택합니다. 수동으로 삭제하지 마세요.
 
+각 배치의 번역 파일을 확인한 뒤 완료된 청크를
+`python3 {baseDir}/scripts/run_state.py record "<temp_dir>" chunk0001 ...`로
+기록하세요.
+
 ## 7. 완전성 확인 및 재시도
 
 모든 배치가 완료된 후 Glob을 사용하여 모든 소스 청크에 해당 출력 파일이 있는지 확인하세요.
@@ -366,6 +397,9 @@ python3 {baseDir}/scripts/merge_and_build.py --temp-dir "<temp_dir>" --title "<t
 ```
 
 `--cleanup` 플래그는 완전히 성공적인 빌드 후 중간 파일(청크, input.html 등)을 제거합니다. 사용자가 중간 파일 유지를 요청한 경우 `--cleanup`을 생략하세요.
+
+`epub_cover`가 지정되면 `--cover "<epub_cover>"`를, `export_name`이 지정되면
+`--export-name "<export_name>"`을 추가하세요.
 
 스크립트는 `config.txt`에서 `output_lang`을 자동으로 읽습니다. 선택적 재정의: `--lang`, `--author`. `--export-name "<stem>"`으로 출력 파일명을 사용자 친화적으로 변경할 수 있습니다 (예: `--export-name report` → `report.html`, `report.docx`, ...).
 

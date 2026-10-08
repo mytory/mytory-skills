@@ -32,7 +32,7 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 
 스킬 폴더의 스크립트와 참고 자료도 함께 설치됩니다. 스킬에서 사용하는 외부 도구와 API 인증은 각 `SKILL.md`의 안내에 따라 별도로 준비해야 합니다.
 
-## 📂 스킬 목록 (총 32개)
+## 📂 스킬 목록 (총 36개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -41,8 +41,8 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 |------|------|
 | [open-code-review](open-code-review/) | `ocr` CLI로 Git 변경사항 AI 기반 코드 리뷰 수행 |
 | [open-code-review-delegate](open-code-review-delegate/) | OCR은 파일 선택·규칙 해석만, 리뷰는 호스트 에이전트가 직접 수행 |
-| [review](review/) | 기준점 이후 변경사항을 표준/명세 두 축으로 검토 |
-| [diagnose](diagnose/) | 버그와 성능 저하를 위한 규율 있는 진단 루프 |
+| [code-review](code-review/) | 코드 변경을 단계별로 검토 |
+| [diagnosing-bugs](diagnosing-bugs/) | 버그와 성능 저하를 위한 재현 중심 진단 루프 |
 | [tdd](tdd/) | Red-Green-Refactor 루프를 통한 테스트 주도 개발 |
 | [prototype](prototype/) | 디자인 커밋 전 구체화를 위한 일회용 프로토타입 |
 | [full-output-enforcement](full-output-enforcement/) | LLM 출력 잘림 방지, 완전한 코드 생성 강제 |
@@ -57,7 +57,7 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 | [design-taste-frontend](design-taste-frontend/) | 반-슬롭 프론트엔드 랜딩페이지/포트폴리오/리디자인 |
 | [frontend-design](frontend-design/) | 새 UI 구축/재구성 시 독특한 시각 디자인 가이드 |
 | [image-to-code](image-to-code/) | 이미지 → 코드 변환 |
-| [design-an-interface](design-an-interface/) | 모듈에 대한 복수 인터페이스 설계안 생성 |
+| [codebase-design](codebase-design/) | 코드베이스의 설계 선택지를 비교하고 구체화 |
 
 </details>
 
@@ -67,11 +67,12 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 | 스킬 | 설명 |
 |------|------|
 | [edit-article](edit-article/) | 글 편집 — 명확성, 간결성, 섹션 구조 개선 |
-| [to-prd](to-prd/) | 대화 컨텍스트를 PRD로 변환하여 이슈 트래커에 게시 |
-| [to-issues](to-issues/) | 계획/명세를 작업 가능한 이슈로 분해 등록 |
+| [to-spec](to-spec/) | 대화 컨텍스트를 구현 명세로 정리 |
+| [to-tickets](to-tickets/) | 계획/명세를 작업 가능한 티켓으로 분해 등록 |
 | [request-refactor-plan](request-refactor-plan/) | 리팩터링 계획 수립 및 GitHub 이슈 등록 |
 | [improve-codebase-architecture](improve-codebase-architecture/) | 코드베이스 아키텍처 개선 기회 탐색 |
-| [write-a-skill](write-a-skill/) | 새 에이전트 스킬 생성 (구조, 점진적 공개, 번들 리소스) |
+| [writing-for-agents](writing-for-agents/) | 에이전트가 따르기 쉬운 스킬과 지침 작성 |
+| [update-skills](update-skills/) | 월간 점검 시 외부 출처 스킬 최신화와 한국어 번역을 수행하고 최근 결과만 기록 (자작) |
 | [html-work-report](html-work-report/) | 작업 시작 시 작성 여부를 확인하고 HTML 완료 보고서와 검증 증거 정리 (자작) |
 | [supertonic-tts](supertonic-tts/) | 로컬 Supertonic 3로 한국어 WAV 합성, 미설치 환경 준비와 CLI·HTTP 사용 안내 (자작) |
 
@@ -84,9 +85,12 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 |------|------|
 | [grill-me](grill-me/) | 계획/디자인을 집요하게 인터뷰하여 의사결정 트리 해결 |
 | [grill-with-docs](grill-with-docs/) | 도메인 모델 기반 계획 검증 및 문서 업데이트 |
+| [grilling](grilling/) | 질문을 통해 계획의 미결정 사항을 구체화 |
+| [domain-modeling](domain-modeling/) | 도메인 언어와 설계 결정을 문서화 |
 | [handoff](handoff/) | 대화를 핸드오프 문서로 압축하여 다른 에이전트에 인계 |
 | [zoom-out](zoom-out/) | 한 단계 물러나 넓은 맥락/상위 관점 제공 |
 | [triage](triage/) | 상태 머신 기반 이슈 분류 |
+| [setup-matt-pocock-skills](setup-matt-pocock-skills/) | 이슈 트래커와 문서 경로 등 스킬 사용 환경 설정 |
 
 </details>
 
@@ -138,19 +142,21 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 
 </details>
 
+최신 mattpocock 스킬에서 호출 이름이 변경되었습니다: `design-an-interface` → `codebase-design`, `diagnose` → `diagnosing-bugs`, `review` → `code-review`, `to-issues` → `to-tickets`, `to-prd` → `to-spec`, `write-a-skill` → `writing-for-agents`.
+
 ## 📋 출처
 
 각 스킬의 원본 저장소와 저자입니다.
 
 | 출처 | 스킬 |
 |------|------|
-| [mattpocock/skills](https://github.com/mattpocock/skills) (18개) | caveman, design-an-interface, diagnose, edit-article, grill-me, grill-with-docs, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, review, tdd, to-issues, to-prd, triage, write-a-skill, zoom-out |
-| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (3개) | design-taste-frontend, full-output-enforcement, image-to-code |
-| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | agent-browser |
-| [anthropics/skills](https://github.com/anthropics/skills) | frontend-design |
-| [ctxrs/ctx](https://github.com/ctxrs/ctx) | ctx-agent-history-search |
-| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개) | open-code-review, open-code-review-delegate |
-| [deusyu/translate-book](https://github.com/deusyu/translate-book) | translate-long-text |
+| [mattpocock/skills](https://github.com/mattpocock/skills) (21개, 원본 `f3fc563`) | caveman, code-review, codebase-design, diagnosing-bugs, domain-modeling, edit-article, grill-me, grill-with-docs, grilling, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, writing-for-agents, zoom-out. 원본에서 사라진 기존 5개(caveman, edit-article, obsidian-vault, request-refactor-plan, zoom-out)는 이전 번역을 유지 |
+| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (3개, 원본 `b482f7a`) | design-taste-frontend, full-output-enforcement, image-to-code |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `0207911`) | agent-browser |
+| [anthropics/skills](https://github.com/anthropics/skills) (원본 `683bc88`) | frontend-design |
+| [ctxrs/ctx](https://github.com/ctxrs/ctx) (원본 `56aaf352`) | ctx-agent-history-search (사용 목적에 맞춘 재구성) |
+| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개, 원본 `2d67596`) | open-code-review, open-code-review-delegate |
+| [deusyu/translate-book](https://github.com/deusyu/translate-book) (원본 `bd5424b`) | translate-long-text (TXT 처리 등 로컬 확장 유지) |
 
 ## 🔗 관련 링크
 

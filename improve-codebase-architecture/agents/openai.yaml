@@ -1,0 +1,5 @@
+interface:
+  display_name: "코드베이스 아키텍처 개선"
+  short_description: "아키텍처 개선점을 찾고 검토합니다"
+policy:
+  allow_implicit_invocation: false

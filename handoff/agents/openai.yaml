@@ -1,0 +1,5 @@
+interface:
+  display_name: "인수인계"
+  short_description: "대화를 인수인계 문서로 압축합니다"
+policy:
+  allow_implicit_invocation: false

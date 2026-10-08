@@ -1,0 +1,3 @@
+interface:
+  display_name: "테스트 주도 개발"
+  short_description: "테스트를 먼저 작성하는 빨강·초록 반복"

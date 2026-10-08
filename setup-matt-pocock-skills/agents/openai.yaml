@@ -1,0 +1,5 @@
+interface:
+  display_name: "Matt Pocock 스킬 설정"
+  short_description: "저장소에서 스킬을 사용하도록 설정"
+policy:
+  allow_implicit_invocation: false
