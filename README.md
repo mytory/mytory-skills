@@ -32,7 +32,7 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 
 스킬 폴더의 스크립트와 참고 자료도 함께 설치됩니다. 스킬에서 사용하는 외부 도구와 API 인증은 각 `SKILL.md`의 안내에 따라 별도로 준비해야 합니다.
 
-## 📂 스킬 목록 (총 36개)
+## 📂 스킬 목록 (총 37개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -67,6 +67,7 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 | 스킬 | 설명 |
 |------|------|
 | [edit-article](edit-article/) | 글 편집 — 명확성, 간결성, 섹션 구조 개선 |
+| [report-notice-writing](report-notice-writing/) | 보고·공지·다른 팀 공유 문서를 쉬운 말로 — 참조 대신 풀어 쓰기, 요청은 평서문, 용어 풀기, 전후 예시와 점검표 (자작) |
 | [to-spec](to-spec/) | 대화 컨텍스트를 구현 명세로 정리 |
 | [to-tickets](to-tickets/) | 계획/명세를 작업 가능한 티켓으로 분해 등록 |
 | [request-refactor-plan](request-refactor-plan/) | 리팩터링 계획 수립 및 GitHub 이슈 등록 |
