@@ -20,7 +20,7 @@ ffprobe -v error -show_streams final-narrated.mp4 | grep codec_type             
 - 음성은 큐 시작 시각에 놓는다. 앞 음성이 아직 재생 중이면 끝난 뒤 0.25초 후로 민다 → `drift`.
 - `room` = 이 큐 시작부터 다음 큐 시작까지. `overflow = duration - room`이 0.5초를 넘거나 `drift`가 2초를 넘으면 `--plan`이 경고하고 실패한다. **영상 속도를 늦추거나 음성을 빠르게 돌리지 않는다.** 캡션을 줄이거나 그 장면의 `hold`를 늘려 다시 찍는다(한국어 음성은 대략 1초에 5~6글자).
 - 영상 트랙은 `-c:v copy`라 화질·길이가 바뀌지 않는다. 오디오는 AAC 96k 모노.
-- **정지 화면 허용은 10초**(소리가 흐르는 동안은 멈춰도 된다). 녹화 때 `REC_NARRATION=1`로 `holdToRead` 상한을 10초로 올리고, 검수는 `check-freeze.sh 영상.mp4 10`.
+- **정지 화면 허용은 30초**(소리가 흐르는 동안은 멈춰도 된다). 녹화 때 `REC_NARRATION=1`로 `holdToRead` 상한을 30초로 올리고, 검수는 `check-freeze.sh 영상.mp4 30`. 단 내레이션 영상에서도 소리 없는 정지는 5초까지만 허용하는데, check-freeze는 오디오를 구분하지 못하므로 이런 구간은 눈으로 확인한다.
 
 ## 캡션을 읽히는 문장으로
 

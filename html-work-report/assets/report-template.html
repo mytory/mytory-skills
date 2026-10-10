@@ -3,6 +3,7 @@
   작업 완료 보고서 템플릿. "YYYY-MM-DD {주제 혹은 이슈번호}/YYYY-MM-DD {주제 혹은 이슈번호}.html"로 복사하고 {{ }} 자리와 주석을 채운 뒤 주석은 지운다.
   폴더: YYYY-MM-DD {주제}/ ── 같은 이름의 .html, videos/, screenshots/(webp), evidence/, reviews/
   규칙은 html-work-report 스킬의 SKILL.md. 해당 없는 절은 통째로 지운다(빈 절을 남기지 않는다).
+  필수 검토가 아닌 본문은 <details>에 두고 <summary>에 결론을 쓴다. warn·bad 판정은 접힌 영역에 두지 않는다.
 -->
 <html lang="ko">
 <head>
@@ -10,121 +11,264 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{이슈·주제}} 완료 보고</title>
 <style>
-  :root { --fg:#1f2933; --muted:#6b7280; --line:#e5e7eb; --bg:#fff; --soft:#f6f8fa; --accent:#1d6fb8; --ok:#15803d; --warn:#b45309; --bad:#b91c1c; }
-  @media (prefers-color-scheme: dark) { :root { --fg:#e5e7eb; --muted:#9ca3af; --line:#374151; --bg:#111827; --soft:#1f2937; --accent:#60a5fa; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; } }
-  body { margin:0; padding:24px 16px 64px; background:var(--bg); color:var(--fg); font:1.25em/1.6 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
-  main { max-width:1200px; margin:0 auto; }
-  h1 { font-size:1.6em; margin:0 0 4px; } h2 { font-size:1.3em; margin:40px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--line); } h3 { font-size:1.1em; margin:24px 0 8px; }
-  .meta { color:var(--muted); font-size:.9em; }
-  table { border-collapse:collapse; width:100%; margin:8px 0 16px; font-size:.92em; } th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--soft); }
-  code { background:var(--soft); padding:1px 5px; border-radius:4px; font:.88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .ok { color:var(--ok); font-weight:600; } .warn { color:var(--warn); font-weight:600; } .bad { color:var(--bad); font-weight:600; }
-  video { width:100%; max-width:1200px; border:1px solid var(--line); border-radius:6px; background:#000; }
-  figure { margin:12px 0 20px; } main figure img { width:100%; height:auto; aspect-ratio:16/10; object-fit:contain; background:var(--soft); border:1px solid var(--line); border-radius:6px; } figcaption { color:var(--muted); font-size:.85em; margin-top:4px; }
-  .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:16px; }
-  .note { background:var(--soft); border-left:4px solid var(--accent); padding:10px 14px; margin:12px 0; border-radius:4px; }
-  ul { padding-left:20px; } li { margin:2px 0; }
-  .video-seek { padding:0; border:0; background:none; color:var(--accent); text-decoration:underline; font:inherit; cursor:pointer; }
-  .video-seek:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+  :root {
+    --ink:#1b2433; --muted:#5f6b7d; --paper:#fafbfc; --sheet:#ffffff; --line:#dce1e8; --soft:#eff2f6;
+    --accent:#2f5bd3; --ok:#13774a; --warn:#a15c00; --bad:#b3261e;
+    --ok-soft:#e4f3eb; --warn-soft:#fbf0dd; --bad-soft:#fbe5e3;
+    --font:"Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink:#e3e8ef; --muted:#9aa5b5; --paper:#151a22; --sheet:#1b212b; --line:#2e3744; --soft:#232b37;
+      --accent:#8aa8f5; --ok:#5fcf97; --warn:#f0b34f; --bad:#f2827a;
+      --ok-soft:#173327; --warn-soft:#3a2c14; --bad-soft:#3d1f1d;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:400 18px/1.7 var(--font); font-variant-numeric:tabular-nums; word-break:keep-all; overflow-wrap:anywhere; }
+  main { max-width:1080px; margin:0 auto; padding:56px 28px 96px; }
+  a { color:var(--accent); text-underline-offset:3px; }
+  h1 { margin:0; font-size:2.1rem; line-height:1.25; font-weight:800; letter-spacing:-.02em; }
+  h2 { margin:64px 0 6px; font-size:1.4rem; line-height:1.35; font-weight:700; letter-spacing:-.01em; }
+  h3 { margin:32px 0 8px; font-size:1.1rem; font-weight:700; }
+  h2 + .lead { margin-top:0; }
+  p, li { max-width:46em; }
+  .lead { color:var(--muted); }
+  code { background:var(--soft); padding:1px 6px; border-radius:4px; font:.86em var(--mono); }
+  ul, ol { padding-left:1.3em; } li { margin:4px 0; }
+
+  /* 머리말: 제목과 위험도 꼬리표 */
+  .masthead { display:grid; grid-template-columns:1fr auto; gap:32px; align-items:start; padding-bottom:28px; border-bottom:2px solid var(--ink); }
+  .meta { display:grid; grid-template-columns:auto 1fr; gap:2px 16px; margin:20px 0 0; font-size:.9rem; }
+  .meta dt { color:var(--muted); } .meta dd { margin:0; }
+  .present { margin:16px 0 0; font-weight:600; }
+  .risk { --risk:var(--muted); position:relative; min-width:11em; padding:16px 22px 18px 44px; border:2px solid var(--risk); border-radius:6px 18px 18px 6px; background:var(--sheet); }
+  .risk::before { content:""; position:absolute; left:15px; top:24px; width:12px; height:12px; border:2px solid var(--risk); border-radius:50%; background:var(--paper); }
+  .risk-low { --risk:var(--ok); } .risk-mid { --risk:var(--warn); } .risk-high { --risk:var(--bad); }
+  .risk-label { margin:0; color:var(--muted); font-size:.85rem; }
+  .risk-level { margin:0; color:var(--risk); font-size:2.4rem; line-height:1.1; font-weight:800; letter-spacing:-.03em; }
+  .risk-action { margin:6px 0 0; font-size:.9rem; font-weight:600; }
+
+  /* 표: 가로줄만. 판정 색은 완료 기준 표의 왼쪽 띠와 글자색으로만 */
+  table { width:100%; border-collapse:collapse; margin:12px 0 20px; font-size:.94rem; }
+  th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:.88rem; white-space:nowrap; border-bottom:1px solid var(--ink); }
+  .ok { color:var(--ok); font-weight:700; } .warn { color:var(--warn); font-weight:700; } .bad { color:var(--bad); font-weight:700; }
+  .ledger td:first-child { box-shadow:inset 4px 0 var(--line); padding-left:18px; }
+  .ledger tr:has(td.ok) td:first-child { box-shadow:inset 4px 0 var(--ok); }
+  .ledger tr:has(td.warn) td:first-child { box-shadow:inset 4px 0 var(--warn); }
+  .ledger tr:has(td.bad) td:first-child { box-shadow:inset 4px 0 var(--bad); }
+  .ledger tr:has(td.warn) { background:var(--warn-soft); } .ledger tr:has(td.bad) { background:var(--bad-soft); }
+
+  /* 검토자 확인 지점 */
+  .checkpoints { list-style:none; padding:0; margin:12px 0 0; border-top:1px solid var(--line); }
+  .checkpoints code { justify-self:start; }
+  .checkpoints li { max-width:none; margin:0; padding:10px 0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:minmax(12em, 22em) 1fr; gap:4px 20px; }
+
+  /* 영상 */
+  video { display:block; width:100%; border-radius:6px; background:#000; }
+  .video-frame { margin:16px 0 8px; padding:10px; border-radius:10px; background:#1b2433; }
+  .chapters td:last-child, .chapters th:last-child { text-align:right; width:6em; }
+  .video-seek { padding:0; border:0; background:none; color:var(--accent); font:inherit; text-align:left; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+  .video-seek:focus-visible { outline:3px solid var(--accent); outline-offset:3px; border-radius:2px; }
+
+  /* 스크린샷 */
+  figure { margin:16px 0 24px; }
+  main figure img { display:block; width:100%; height:auto; aspect-ratio:16/10; object-fit:contain; background:var(--soft); border:1px solid var(--line); border-radius:6px; }
+  figcaption { margin-top:6px; color:var(--muted); font-size:.88rem; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:20px; }
+
+  /* 접어 둔 본문: 절 제목과 결론은 밖에, 본문만 접는다 */
+  details { margin:12px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  summary { position:relative; padding:12px 0 12px 30px; font-weight:600; cursor:pointer; list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:""; position:absolute; left:8px; top:50%; width:8px; height:8px; border-right:2px solid var(--accent); border-bottom:2px solid var(--accent); transform:translateY(-60%) rotate(-45deg); transition:transform .15s ease; }
+  details[open] > summary::before { transform:translateY(-75%) rotate(45deg); }
+  summary:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  details > :last-child { margin-bottom:16px; }
+  @media (prefers-reduced-motion: reduce) { summary::before { transition:none; } }
+
+  /* 이미지 크게 보기 */
   main figure img[role="button"] { cursor:zoom-in; }
   main figure img:focus-visible, .image-viewer button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
-  .image-viewer { box-sizing:border-box; width:calc(100% - 32px); max-width:1600px; max-height:calc(100dvh - 32px); padding:16px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
-  .image-viewer::backdrop { background:rgb(0 0 0 / .8); }
+  .image-viewer { width:calc(100% - 32px); max-width:1600px; max-height:calc(100dvh - 32px); padding:16px; border:1px solid var(--line); border-radius:8px; background:var(--sheet); color:var(--ink); }
+  .image-viewer::backdrop { background:rgb(12 16 24 / .82); }
   .image-viewer img { display:block; width:100%; height:calc(100dvh - 180px); min-height:100px; object-fit:contain; }
   .image-viewer-controls { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
-  .image-viewer button { padding:6px 12px; border:1px solid var(--line); border-radius:4px; background:var(--soft); color:var(--fg); font:inherit; cursor:pointer; }
+  .image-viewer button { padding:6px 14px; border:1px solid var(--line); border-radius:6px; background:var(--soft); color:var(--ink); font:inherit; cursor:pointer; }
   .image-viewer button:disabled { opacity:.4; cursor:default; }
-  .image-viewer-caption { margin:8px 0 0; color:var(--muted); font-size:.85em; }
+  .image-viewer-caption { margin:8px 0 0; color:var(--muted); font-size:.88rem; }
+
+  @media (max-width: 720px) {
+    body { font-size:16px; }
+    main { padding:32px 16px 64px; }
+    .masthead { grid-template-columns:1fr; }
+    .checkpoints li { grid-template-columns:1fr; }
+    table { display:block; overflow-x:auto; }
+  }
 </style>
 </head>
 <body>
 <main>
-<h1>{{이슈·주제}} 완료 보고</h1>
-<p class="meta">{{YYYY-MM-DD}} · 브랜치 <code>{{branch}}</code> ({{기준 브랜치}} 기준, <strong>{{커밋 상태: 미커밋 / 커밋 abc1234 / 병합됨}}</strong>) · 작성: {{누가 무엇을 했는지}}</p>
+<!-- 머리말: 주제, 메타, 위험도 꼬리표. 위험도 클래스는 risk-low | risk-mid | risk-high, 단어는 낮음 | 중간 | 높음.
+     권장 검토 방식: 낮음 "보고서 확인", 중간 "영상·증거 확인", 높음 "코드 직접 검토". -->
+<header class="masthead">
+  <div>
+    <h1>{{이슈·주제}} 완료 보고</h1>
+    <dl class="meta">
+      <dt>작성일</dt><dd>{{YYYY-MM-DD}}</dd>
+      <dt>브랜치</dt><dd><code>{{branch}}</code> ({{기준 브랜치}} 기준)</dd>
+      <dt>커밋</dt><dd><strong>{{미커밋 / 커밋 abc1234 / 병합됨}}</strong></dd>
+      <dt>작성</dt><dd>{{누가 무엇을 했는지: 예) 구현 Sonnet, 검수 Opus·OCR, 확인 홍길동}}</dd>
+    </dl>
+    <!-- 프레젠테이션 영상을 만들었을 때만. 없으면 삭제. -->
+    <p class="present"><a href="videos/presentation-narrated.mp4">프레젠테이션 영상 보기 ({{M분 S초}})</a></p>
+  </div>
+  <div class="risk risk-{{low|mid|high}}">
+    <p class="risk-label">위험도</p>
+    <p class="risk-level">{{낮음|중간|높음}}</p>
+    <p class="risk-action">{{보고서 확인|영상·증거 확인|코드 직접 검토}}</p>
+  </div>
+</header>
 
-<!-- 1. 요약: 요청 항목마다 한 줄. 결과는 class="ok|warn|bad". "남은 외부 작업"(커밋·푸시·이슈 코멘트·전달)은 warn으로 마지막 줄에. -->
-<h2>1. 요약</h2>
-<table>
-<tr><th style="width:34%">항목</th><th>결과</th></tr>
-<tr><td>{{요청 항목}}</td><td class="ok">완료 — {{한 줄}}</td></tr>
-<tr><td>테스트</td><td class="ok">{{실행한 명령과 수치: 예) Java 560 통과, JS 299 통과, 빌드 성공}}</td></tr>
-<tr><td>남은 외부 작업</td><td class="warn">{{커밋·푸시, 이슈 코멘트, 전달 — 사용자 승인 필요}}</td></tr>
+<!-- 검토 안내: 검토자가 이 절과 완료 기준 표만 보고 다음 행동을 정할 수 있어야 한다. 접지 않는다. -->
+<section id="review-guide">
+<h2>검토 안내</h2>
+<p class="lead">{{위험도를 그렇게 정한 이유 한두 문장. 예) 권한 검사 코드를 공용 필터로 옮겨 모든 관리 화면에 영향이 있다.}}</p>
+<ul class="checkpoints">
+  <li><code>{{src/path/File.java:120}}</code><span>{{왜 직접 봐야 하는지. 예) 예외 시 권한 없음으로 처리하는 분기, 테스트로 다 못 덮음}}</span></li>
+</ul>
+</section>
+
+<!-- 완료 기준과 증거: 기준마다 한 줄. 판정 칸은 class="ok|warn|bad". 증거는 파일 링크나 영상 구간.
+     남은 외부 작업(커밋·푸시·이슈 코멘트·전달)은 warn으로 마지막 줄에. -->
+<section id="criteria">
+<h2>완료 기준과 증거</h2>
+<table class="ledger">
+<tr><th style="width:34%">완료 기준</th><th style="width:16%">증거 종류</th><th>증거</th><th style="width:12%">판정</th></tr>
+<tr><td>{{완료 기준}}</td><td>{{작동 영상 / 실행 기록 / 측정값 / 응답 JSON}}</td><td>{{<a href="evidence/01-test.log">evidence/01-test.log</a> — 한 줄 요지}}</td><td class="ok">통과</td></tr>
+<tr><td>남은 외부 작업</td><td>—</td><td>{{커밋·푸시, 이슈 코멘트, 전달 — 사용자 승인 필요}}</td><td class="warn">대기</td></tr>
 </table>
+</section>
 
-<!-- 2. 영상: browser-repro-video 스킬로 찍은 mp4. 상대 경로. 캡션이 영상에 박혀 있으면 <track>을 달지 않는다(겹침, file://에서는 막힘).
-     음성 설명을 입혔으면 -narrated.mp4를 주 영상으로 하고 "N문장·합계 M초·밀림 K초"를 한 줄 적는다. -->
-<h2>2. 영상</h2>
-<p><code>videos/{{final-narrated.mp4}}</code> — {{무엇과 무엇을 같은 조작으로 비교했는지. 캡션·음성 설명 유무.}}</p>
-<video id="report-video" controls preload="metadata" src="videos/{{final-narrated.mp4}}"></video>
-<table>
-<tr><th style="width:8%">구간</th><th>내용</th><th style="width:16%">시작</th></tr>
+<!-- 영상: browser-repro-video 스킬로 찍은 전후 비교 또는 작동 시연 mp4. 영상을 고르지 않았으면 절 삭제. 상대 경로.
+     캡션이 영상에 박혀 있으면 <track>을 달지 않는다(겹침, file://에서는 막힘).
+     음성 설명을 입혔으면 -narrated.mp4를 주 영상으로 하고 "N문장, 합계 M초, 밀림 K초"를 설명에 적는다. -->
+<section id="video">
+<h2>영상</h2>
+<p class="lead">{{전후 비교: 무엇과 무엇을 같은 조작으로 비교했는지 / 작동 시연: 어떤 흐름을 보여 주는지. 캡션·음성 설명 유무.}} <code>videos/{{final-narrated.mp4}}</code></p>
+<div class="video-frame"><video id="report-video" controls preload="metadata" src="videos/{{final-narrated.mp4}}"></video></div>
+<table class="chapters">
+<tr><th style="width:3em">구간</th><th>내용</th><th>시작</th></tr>
 <tr><td>1</td><td><button type="button" class="video-seek" data-video-target="report-video" data-video-seek="0">{{보여 주는 것 — 무엇을 측정·판정했는지까지}}</button></td><td><button type="button" class="video-seek" data-video-target="report-video" data-video-seek="0">0:00</button></td></tr>
 </table>
+</section>
 
-<!-- 3. 요구사항·피드백 반영: 요청이 여러 건이거나 재보고일 때. 번호는 사용자가 준 순서 그대로. -->
-<h2>3. 요청 반영</h2>
+<!-- 요청 반영: 요청이 여러 건이거나 재보고일 때. 번호는 사용자가 준 순서 그대로. -->
+<section id="requests">
+<h2>요청 반영</h2>
 <table>
-<tr><th style="width:4%">#</th><th style="width:36%">요청</th><th>처리</th></tr>
+<tr><th style="width:3em">#</th><th style="width:36%">요청</th><th>처리와 확인 방법</th></tr>
 <tr><td>1</td><td>{{요청 원문 요지}}</td><td>{{무엇을 어떻게 바꿨는지 + 확인 방법/증거 파일}}</td></tr>
 </table>
+</section>
 
-<!-- 4. 구현 내용: 기능마다 h3. 입력→주요 처리→결과와 그 방식을 택한 이유를 2~4문장으로 간단히 설명한다. 스크린샷은 webp, 확인 대상이 보이게 스크롤해서 찍은 것. -->
-<h2>4. 구현 내용</h2>
-<h3>4.1 {{기능명}} — <code>{{URL 또는 진입점}}</code></h3>
+<!-- 구현 내용: 기능마다 h3. 입력→주요 처리→결과와 그 방식을 택한 이유를 2~4문장. 핵심 스크린샷만 보이게 두고 보조 스크린샷은 접는다. -->
+<section id="implementation">
+<h2>구현 내용</h2>
+<h3>{{기능명}} — <code>{{URL 또는 진입점}}</code></h3>
 <p>{{입력→주요 처리→결과와 그 방식을 택한 이유를 2~4문장으로 설명}}</p>
 <div class="grid2">
-<figure><img src="screenshots/final/{{01-설명.webp}}" alt=""><figcaption>{{이 화면에서 봐야 할 것}}</figcaption></figure>
-<figure><img src="screenshots/final/{{02-설명.webp}}" alt=""><figcaption>{{이 화면에서 봐야 할 것}}</figcaption></figure>
+<figure><img src="screenshots/final/{{01-설명.webp}}" alt="{{화면 설명}}"><figcaption>{{이 화면에서 봐야 할 것}}</figcaption></figure>
+<figure><img src="screenshots/final/{{02-설명.webp}}" alt="{{화면 설명}}"><figcaption>{{이 화면에서 봐야 할 것}}</figcaption></figure>
 </div>
+<details>
+<summary>보조 스크린샷 {{N}}장</summary>
+<div class="grid2">
+<figure><img src="screenshots/final/{{03-설명.webp}}" alt="{{화면 설명}}"><figcaption>{{이 화면에서 봐야 할 것}}</figcaption></figure>
+</div>
+</details>
 
 <!-- 전/후 비교는 형용사 말고 측정값으로. 값은 증거 파일(evidence/)에서 가져온다. -->
-<h3>4.2 수정 전/후 측정값 (<code>evidence/{{파일}}</code>)</h3>
+<h3>수정 전후 측정값</h3>
 <table>
-<tr><th></th><th>수정 전</th><th>수정 후</th></tr>
-<tr><td>{{지표}}</td><td>{{값}}</td><td>{{값}}</td></tr>
+<tr><th>지표</th><th>수정 전</th><th>수정 후</th><th>증거</th></tr>
+<tr><td>{{지표}}</td><td>{{값}}</td><td>{{값}}</td><td><a href="evidence/{{파일}}">{{파일}}</a></td></tr>
 </table>
+</section>
 
-<!-- 5. DB·외부 영향: 마이그레이션, 다른 팀에 전달할 것. 없으면 절 삭제. -->
-<h2>5. DB 마이그레이션과 전달 사항</h2>
+<!-- DB·외부 영향: 마이그레이션, 다른 팀에 전달할 것. 없으면 절 삭제. 접지 않는다. -->
+<section id="impact">
+<h2>DB 마이그레이션과 전달 사항</h2>
 <ol>
 <li><code>{{sql 파일}}</code> — {{무엇을 바꾸는지}}. {{적용 상태}}</li>
 </ol>
+</section>
 
-<!-- 6. 설계 결정: 사용자·리뷰어와 갈린 쟁점만. 누가 정했는지 적는다. -->
-<h2>6. 설계 결정</h2>
+<!-- 설계 결정: 사용자·검수 AI와 갈린 쟁점만. 누가 정했는지 적는다. -->
+<section id="decisions">
+<h2>설계 결정</h2>
+<details>
+<summary>{{N}}건 — {{사용자 결정 X건, 내 판단 Y건, 검수 AI 권장과 다르게 간 것 Z건}}</summary>
 <table>
 <tr><th style="width:28%">쟁점</th><th>결정</th><th style="width:32%">이유</th></tr>
 <tr><td>{{쟁점}}</td><td>{{결정 (사용자 결정 / 내 판단)}}</td><td>{{이유}}</td></tr>
 </table>
+</details>
+</section>
 
-<!-- 7. 리뷰 루프: 회차별 건수와 조치. 원문은 reviews/에 두고 링크만. -->
-<h2>7. 리뷰 루프</h2>
+<!-- 검수: 코드를 쓰지 않은 검수 전용 AI의 회차별 결과. 원문은 reviews/에 두고 링크만. 고치지 않은 지적이 있으면 결론 줄에 드러낸다. -->
+<section id="reviews">
+<h2>검수</h2>
+<p class="lead">{{결론 한 줄. 예) 검수 AI 2종으로 3회, 마지막 회차 지적 0건.}}</p>
+<details>
+<summary>회차별 결과 {{N}}회</summary>
 <table>
-<tr><th>회차</th><th>{{리뷰어 A}}</th><th>{{리뷰어 B}}</th><th>브라우저</th><th>조치</th></tr>
-<tr><td>1</td><td>{{건수(심각도별)}}</td><td>{{건수}}</td><td>{{PASS/FAIL}}</td><td>{{무엇을 고쳤는지}}</td></tr>
+<tr><th style="width:4em">회차</th><th>검수자(모델·도구)</th><th>대상</th><th>지적</th><th>조치</th></tr>
+<tr><td>1</td><td>{{예) Opus 서브 에이전트 / ocr}}</td><td>{{코드 · 보고서 · 테스트}}</td><td>{{건수(심각도별)}}</td><td>{{무엇을 고쳤는지, 고치지 않은 것과 이유}}</td></tr>
 </table>
-<p class="meta">원문: <code>reviews/</code></p>
+<p>원문: <a href="reviews/">reviews/</a></p>
+</details>
+</section>
 
-<!-- 8. 검증: 실제로 실행한 것만. 못 한 것은 "미확인"으로 적는다. -->
-<h2>8. 검증</h2>
-<h3>테스트 코드 변경 목록</h3>
-<!-- 새로 만들거나 수정한 테스트의 파일·메서드(케이스)별로 한 줄씩 적는다. 테스트 코드 변경이 없다면 표 대신 <p>없음</p>을 적는다. 테스트 실행 결과는 아래 검증 목록에 적는다. -->
-<table>
-<tr><th>테스트 파일</th><th>메서드·케이스</th><th>변경 내용</th><th>검증하는 동작</th></tr>
-<tr><td><code>{{새로 만들거나 수정한 테스트 파일 경로}}</code></td><td><code>{{테스트 메서드·케이스 이름}}</code></td><td>{{추가·수정·삭제한 내용}}</td><td>{{검증하는 동작}}</td></tr>
-</table>
-<h3>실행한 검증</h3>
+<!-- 검증: 실제로 실행한 것만. 못 한 것은 "미확인"으로 적는다. 수치에는 실행 기록(evidence/*.log)을 링크한다. -->
+<section id="verification">
+<h2>검증</h2>
 <ul>
-<li>{{명령과 결과 수치}}</li>
+<li>{{명령과 결과 수치}} — <a href="evidence/{{01-test.log}}">{{01-test.log}}</a></li>
 <li>{{브라우저 검증 방법, DB 원복 확인}}</li>
 <li>{{단위 테스트로 증명할 수 없어 수동 확인한 것}}</li>
 </ul>
+<details>
+<summary>테스트 코드 변경 {{N}}개 파일, {{M}}개 메서드</summary>
+<!-- 새로 만들거나 수정한 테스트의 파일·메서드(케이스)별로 한 줄씩. 변경이 없다면 details 대신 <p>테스트 코드 변경 없음</p>. -->
+<table>
+<tr><th>테스트 파일</th><th>메서드·케이스</th><th>변경 내용</th><th>검증하는 동작</th></tr>
+<tr><td><code>{{테스트 파일 경로}}</code></td><td><code>{{테스트 메서드·케이스 이름}}</code></td><td>{{추가·수정·삭제한 내용}}</td><td>{{검증하는 동작}}</td></tr>
+</table>
+</details>
+</section>
 
-<!-- 9. 범위 밖·남은 위험: 고치지 않은 것과 이유. 영상·스크린샷에 반영되지 않은 변경이 있으면 여기에 적지 말고 다시 찍는다. -->
-<h2>9. 범위 밖·남은 위험</h2>
+<!-- 검수 기록(선택): 사용자가 AI에게 변경 내용을 묻고 받은 답 중 핵심만. 없으면 절 삭제. -->
+<section id="qa">
+<h2>검수 기록</h2>
+<details>
+<summary>질문 {{N}}개</summary>
+<dl>
+<dt><strong>{{질문}}</strong></dt>
+<dd>{{답 요지와 근거(파일:줄, 증거 파일)}}</dd>
+</dl>
+</details>
+</section>
+
+<!-- 범위 밖·남은 위험: 고치지 않은 것과 이유. 접지 않는다. 영상·스크린샷에 반영되지 않은 변경이 있으면 여기에 적지 말고 다시 찍는다. -->
+<section id="risks">
+<h2>범위 밖·남은 위험</h2>
 <ul>
 <li>{{항목 — 왜 범위 밖인지, 어디에 기록했는지}}</li>
 </ul>
+</section>
 </main>
 <dialog class="image-viewer" aria-label="스크린샷 크게 보기">
   <div class="image-viewer-controls">

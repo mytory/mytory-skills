@@ -3,14 +3,22 @@
 import {chromium} from 'playwright-core';
 import {execFileSync} from 'node:child_process';
 import {writeFileSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {tmpdir, homedir} from 'node:os';
+import {join, dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
 
-export const COLORS = {head: '#1f3a93', bad: '#9f1239', good: '#166534'};
+// 캡션 띠 색. html-work-report 보고서 템플릿의 잉크·판정 색과 같다.
+export const COLORS = {head: '#1b2433', bad: '#b3261e', good: '#13774a'};
 
-// 띠 모드(기본)에서 캡션·패널 글자를 그리는 한글 글꼴. 없으면 saveVideo가 오류로 알린다. 다른 글꼴은 환경 변수 REC_FONT로 지정.
-const FONT = process.env.REC_FONT ?? '/System/Library/Fonts/AppleSDGothicNeo.ttc';
-const BAND = {captionSize: 26, captionLine: 34, panelSize: 22, panelLine: 30, pad: 8, topBg: '#222222', bottomBg: '#f3f4f6'};
+// 띠 모드(기본)에서 캡션·패널 글자를 그리는 한글 글꼴. 스킬에 포함한 Pretendard 가변 글꼴(SIL OFL, assets/fonts/)을 쓴다.
+// ffmpeg는 가변 글꼴의 기본 굵기(Regular)로 그리므로 굵은 글자는 같은 색 테두리로 굵기를 낸다. 다른 글꼴은 환경 변수 REC_FONT로 지정.
+// rec-lib.mjs를 작업 폴더에 복사해 쓰는 경우를 위해 흔한 스킬 설치 위치도 찾는다. 못 찾으면 REC_FONT로 경로를 준다.
+const FONT = process.env.REC_FONT ?? [
+    join(dirname(fileURLToPath(import.meta.url)), '..'),
+    join(homedir(), '.agents/skills/browser-repro-video'),
+    join(homedir(), '.claude/skills/browser-repro-video'),
+].map(d => join(d, 'assets/fonts/PretendardVariable.ttf')).find(f => existsSync(f)) ?? 'assets/fonts/PretendardVariable.ttf';
+const BAND = {captionSize: 26, captionLine: 34, panelSize: 22, panelLine: 30, pad: 8, topBg: '#1b2433', panelBg: '#fafbfc', ink: '#1b2433', frame: '#3a465c', margin: 24};
 
 // headless 녹화에는 커서가 찍히지 않으므로 마우스를 따라다니는 점(클릭 시 커졌다 줄어듦)을 페이지에 그려 넣는다.
 const cursorOverlayScript = () => {
@@ -39,10 +47,16 @@ const cursorOverlayScript = () => {
 
 // 녹화 세션을 연다. 로그인 등 준비는 호출 쪽에서 한다. videoDir를 주면 녹화하고 커서 오버레이를 켠다.
 // 캡션·패널 표시 방식:
-//  - 기본(띠 모드): 페이지에는 아무것도 덧그리지 않고 기록만 한다. saveVideo가 영상 위(topBand px)·아래(bottomBand px)에 띠를 덧붙여 그 안에 그린다.
-//    결과 해상도는 width x (height + topBand + bottomBand). 같은 값으로 찍은 클립끼리만 concat할 수 있다.
-//  - overlay: true: 예전 방식. 페이지 위에 배너·패널을 덧그린다(화면을 가린다). 해상도는 width x height 그대로.
-export async function openRecording({videoDir, width = 1440, height = 900, cookies = [], overlay = false, topBand = 120, bottomBand = 200}) {
+//  - 기본(띠 모드): 페이지에는 아무것도 덧그리지 않고 기록만 한다. saveVideo가 남색 바탕 위쪽에 캡션 띠(topBand px)를 두고,
+//    그 아래 왼쪽에 브라우저 화면, 오른쪽에 패널 카드(sideBand px)를 여백(BAND.margin px)을 두고 놓는다.
+//    브라우저는 뷰포트(width x height) 그대로 찍고, 영상에는 폭 displayWidth로 축소해 넣는다(비율 유지).
+//    결과 해상도는 (여백 + displayWidth + 여백 + sideBand + 여백) x (topBand + 여백 + 축소한 높이 + 여백). sideBand가 0이면 패널과 그 여백이 빠진다.
+//    기본값은 4:3 뷰포트 1440x1080 → 1216x912로 축소 + 패널 632 → 16:9인 1920x1080. 같은 값으로 찍은 클립끼리만 concat할 수 있다.
+//  - overlay: true: 예전 방식. 페이지 위에 배너·패널을 덧그린다(화면을 가린다). 해상도는 뷰포트 그대로(기본 1920x1080).
+export async function openRecording({videoDir, width, height, displayWidth = 1216, cookies = [], overlay = false, topBand = 120, sideBand = 632}) {
+    const even = n => Math.ceil(n / 2) * 2;
+    width ??= overlay ? 1920 : 1440;
+    height ??= overlay ? 1080 : 1080;
     const browser = await chromium.launch({channel: 'chrome', headless: true});
     const context = await browser.newContext({
         viewport: {width, height},
@@ -56,8 +70,9 @@ export async function openRecording({videoDir, width = 1440, height = 900, cooki
     // 영상의 0초는 페이지 생성이 아니라 첫 화면이 그려진 시점이다(실측: 빈 페이지를 한 번 그린 직후). 그래서 먼저 빈 화면을 그리고 그 직후를 기준 시각으로 잡는다.
     await page.goto('data:text/html,<body style="margin:0;background:%23fff">');
     const t0 = Date.now();
-    const even = n => Math.ceil(n / 2) * 2;
-    const rec = {t0, cues: [], last: null, end: null, overlay, width, height, topBand: even(topBand), bottomBand: even(bottomBand), panels: []};
+    // rec.width·height는 영상 안에 놓이는 브라우저 화면 크기(축소 후), viewport는 실제로 찍은 크기다.
+    const shown = overlay ? {width, height} : {width: even(displayWidth), height: even(height * displayWidth / width)};
+    const rec = {t0, cues: [], last: null, end: null, overlay, ...shown, viewport: {width, height}, topBand: even(topBand), sideBand: even(sideBand), panels: []};
     records.set(page, rec);
     if (!overlay) {
         // 페이지 이동하면 패널이 사라지던 예전 동작과 맞추기 위해 주 프레임 이동 시 열린 패널을 닫는다(캡션은 유지).
@@ -88,8 +103,8 @@ export async function humanType(page, locator, text, {delay = 180, before = 500,
 }
 
 // 읽으라고 멈추는 대기. 상한을 넘기면 예외를 던져 정지 화면 규칙을 어기지 못하게 한다.
-// 기본 5초. 내레이션을 입힐 영상은 음성이 흐르는 동안 화면이 멈춰도 되므로 10초(REC_NARRATION=1 또는 setMaxReadMs(10000)).
-export let MAX_READ_MS = process.env.REC_NARRATION ? 10000 : 5000;
+// 기본 5초. 내레이션을 입힐 영상은 음성이 흐르는 동안 화면이 멈춰도 되므로 30초(REC_NARRATION=1 또는 setMaxReadMs(30000)).
+export let MAX_READ_MS = process.env.REC_NARRATION ? 30000 : 5000;
 export function setMaxReadMs(ms) { MAX_READ_MS = ms; }
 export async function holdToRead(page, ms) {
     if (ms > MAX_READ_MS) {
@@ -174,10 +189,13 @@ function addPanel(rec, slot, items) {
             p.end = nowMs(rec);
         }
     }
-    const lines = items.flatMap(it => wrapText(it.text, BAND.panelSize, rec.width - 40).map(text => ({text, color: it.color ?? '#111111', head: !!it.head})));
-    const cap = maxLines(rec.bottomBand, BAND.panelLine);
+    if (!rec.sideBand) {
+        throw new Error('sideBand가 0이라 패널을 그릴 곳이 없다. openRecording({sideBand})를 준다.');
+    }
+    const lines = items.flatMap(it => wrapText(it.text, BAND.panelSize, rec.sideBand - 48).map(text => ({text, color: it.color ?? BAND.ink, head: !!it.head})));
+    const cap = maxLines(rec.height, BAND.panelLine);
     if (lines.length > cap) {
-        throw new Error(`패널이 ${lines.length}줄이라 아래 띠(${cap}줄)에 안 들어간다. openRecording({bottomBand})를 늘리거나 내용을 줄인다.`);
+        throw new Error(`패널이 ${lines.length}줄이라 오른쪽 패널(${cap}줄)에 안 들어간다. 내용을 줄인다.`);
     }
     rec.panels.push({slot, start: nowMs(rec), end: null, lines});
 }
@@ -187,7 +205,7 @@ export async function caption(page, text, {color = COLORS.head, burn = true} = {
     closeOpenCue(rec);
     const cue = {start: nowMs(rec), end: null, text};
     if (!rec.overlay) {
-        const lines = wrapText(text, BAND.captionSize, rec.width - 40);
+        const lines = wrapText(text, BAND.captionSize, rec.width + rec.sideBand - 40);
         const cap = maxLines(rec.topBand, BAND.captionLine);
         if (burn && lines.length > cap) {
             throw new Error(`캡션이 ${lines.length}줄이라 위 띠(${cap}줄)에 안 들어간다. 캡션을 줄이거나 openRecording({topBand})를 늘린다.`);
@@ -263,13 +281,13 @@ export async function highlight(page, items) {
 
 // 설명 패널. 앱 화면의 핵심을 가리지 않는 위치(css의 top/left/bottom 등)에 둔다.
 // lines: [{text, ok}] — ok가 true면 초록, false면 빨강, 없으면 검정.
-// 띠 모드(기본)에서는 css를 무시하고 아래 띠에 그린다. 같은 종류(note)의 새 패널이 이전 패널을 대체하고, 페이지 이동하면 닫힌다.
+// 띠 모드(기본)에서는 css를 무시하고 오른쪽 패널 카드에 그린다. 같은 종류(note)의 새 패널이 이전 패널을 대체하고, 페이지 이동하면 닫힌다.
 export async function notePanel(page, {heading = '', lines, css = 'bottom:16px;left:252px;width:1164px'}) {
     const rec = recordOf(page);
     if (!rec.overlay) {
         addPanel(rec, 'note', [
             ...(heading ? [{text: heading, head: true}] : []),
-            ...lines.map(({text, ok}) => ({text, color: ok === undefined ? '#111111' : ok ? '#16a34a' : '#e11d48'})),
+            ...lines.map(({text, ok}) => ({text, color: ok === undefined ? BAND.ink : ok ? COLORS.good : COLORS.bad})),
         ]);
         return;
     }
@@ -297,7 +315,7 @@ export async function notePanel(page, {heading = '', lines, css = 'bottom:16px;l
 // 표 패널. rows: 객체 배열, columns: 표시할 열, keyColumn: 행을 맞추는 열.
 // after를 주면 "이전 → 이후"로 바뀐 칸을 빨갛게 표시하고, 새 행·삭제된 행도 표시한다.
 // rows/after는 실제 조회 결과(DB 조회, 응답 JSON)에서 만든 것이어야 한다. 하드코딩 금지.
-// 띠 모드(기본)에서는 표를 "열=값" 줄로 풀어 아래 띠에 글자로 그린다(바뀐 칸이 있는 행은 빨강, 값은 "이전 → 이후"). css는 무시.
+// 띠 모드(기본)에서는 표를 "열=값" 줄로 풀어 오른쪽 패널 카드에 글자로 그린다(바뀐 칸이 있는 행은 빨강, 값은 "이전 → 이후"). css는 무시.
 export async function tablePanel(page, {heading, columns, keyColumn, before, after = null, css = 'bottom:16px;left:252px'}) {
     const rec = recordOf(page);
     if (!rec.overlay) {
@@ -316,7 +334,7 @@ export async function tablePanel(page, {heading, columns, keyColumn, before, aft
                 const text = !after ? fmt(bv) : !b ? `${fmt(av)} (새 행)` : !a ? `${fmt(bv)} (삭제됨)` : diff ? `${fmt(bv)} → ${fmt(av)}` : fmt(av);
                 return `${c}=${text}`;
             });
-            items.push({text: cells.join('   '), color: changed ? '#e11d48' : '#111111'});
+            items.push({text: cells.join('   '), color: changed ? COLORS.bad : BAND.ink});
         }
         addPanel(rec, 'table', items);
         return;
@@ -366,9 +384,9 @@ export async function captureResponse(page, urlPart, outPath, trigger, timeout =
 // 띠 모드: 영상 위·아래에 띠를 덧붙이고 기록한 캡션·패널을 시각에 맞춰 drawtext로 그린다.
 function bandFilter(rec, dir) {
     if (!existsSync(FONT)) {
-        throw new Error(`한글 글꼴이 없다: ${FONT}. 환경 변수 REC_FONT로 .ttf/.ttc 경로를 지정한다.`);
+        throw new Error(`한글 글꼴이 없다: ${FONT}. 환경 변수 REC_FONT로 browser-repro-video 스킬의 assets/fonts/PretendardVariable.ttf(또는 다른 .ttf/.ttc) 경로를 지정한다.`);
     }
-    const {width, height, topBand, bottomBand} = rec;
+    const {width, height, topBand, sideBand} = rec;
     const total = rec.end;
     const sec = ms => (ms / 1000).toFixed(3);
     const hex = c => '0x' + c.replace('#', '');
@@ -379,8 +397,14 @@ function bandFilter(rec, dir) {
         return `drawtext=fontfile='${FONT}':textfile='${file}':expansion=none:fontsize=${size}:fontcolor=${hex(color)}`
             + (bold ? `:borderw=1:bordercolor=${hex(color)}` : '') + `:x=${x}:y=${y}:enable='between(t,${sec(a)},${sec(b)})'`;
     };
-    const f = [`pad=${width}:${height + topBand + bottomBand}:0:${topBand}:color=${hex(BAND.topBg)}`,
-        `drawbox=x=0:y=${topBand + height}:w=iw:h=${bottomBand}:color=${hex(BAND.bottomBg)}:t=fill`];
+    // 남색 바탕에 브라우저 화면을 여백만큼 띄워 놓고 얇은 테두리를 두른 뒤, 오른쪽에 패널 카드를 그린다.
+    const m = BAND.margin;
+    const panelX = m + width + m;
+    const f = [`scale=${width}:${height}:flags=lanczos`, `pad=${panelX + (sideBand ? sideBand + m : 0)}:${topBand + m + height + m}:${m}:${topBand + m}:color=${hex(BAND.topBg)}`,
+        `drawbox=x=${m - 2}:y=${topBand + m - 2}:w=${width + 4}:h=${height + 4}:color=${hex(BAND.frame)}:t=2`];
+    if (sideBand) {
+        f.push(`drawbox=x=${panelX}:y=${topBand + m}:w=${sideBand}:h=${height}:color=${hex(BAND.panelBg)}:t=fill`);
+    }
     for (const c of rec.cues.filter(c => c.burn && c.lines)) {
         const a = c.start, b = c.end ?? total;
         if (b <= a) {
@@ -396,7 +420,7 @@ function bandFilter(rec, dir) {
     // 패널: 시작·끝 시각으로 구간을 나누고, 구간마다 그 시각에 열린 패널들의 줄을 이어서 그린다.
     const panels = rec.panels.map(p => ({...p, end: p.end ?? total}));
     const points = [...new Set(panels.flatMap(p => [p.start, p.end]))].sort((x, y) => x - y);
-    const cap = maxLines(bottomBand, BAND.panelLine);
+    const cap = maxLines(height, BAND.panelLine);
     for (let k = 0; k < points.length - 1; k++) {
         const [a, b] = [points[k], points[k + 1]];
         const lines = panels.filter(p => p.start <= a && p.end >= b).flatMap(p => p.lines);
@@ -404,10 +428,10 @@ function bandFilter(rec, dir) {
             continue;
         }
         if (lines.length > cap) {
-            throw new Error(`${sec(a)}초 구간에 열린 패널이 합쳐 ${lines.length}줄이라 아래 띠(${cap}줄)에 안 들어간다. bottomBand를 늘리거나 패널을 줄인다.`);
+            throw new Error(`${sec(a)}초 구간에 열린 패널이 합쳐 ${lines.length}줄이라 오른쪽 패널(${cap}줄)에 안 들어간다. 패널을 줄인다.`);
         }
         lines.forEach((l, i) => f.push(text(l.text, {
-            x: 20, y: topBand + height + BAND.pad + i * BAND.panelLine + Math.round((BAND.panelLine - BAND.panelSize) / 2),
+            x: panelX + 24, y: topBand + m + BAND.pad * 2 + i * BAND.panelLine + Math.round((BAND.panelLine - BAND.panelSize) / 2),
             size: BAND.panelSize, color: l.color, bold: l.head, a, b,
         })));
     }

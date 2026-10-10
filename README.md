@@ -73,7 +73,7 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 | [improve-codebase-architecture](improve-codebase-architecture/) | 코드베이스 아키텍처 개선 기회 탐색 |
 | [writing-for-agents](writing-for-agents/) | 에이전트가 따르기 쉬운 스킬과 지침 작성 |
 | [update-skills](update-skills/) | 월간 점검 시 외부 출처 스킬 최신화와 한국어 번역을 수행하고 최근 결과만 기록 (자작) |
-| [html-work-report](html-work-report/) | 작업 시작 시 작성 여부를 확인하고 HTML 완료 보고서와 검증 증거 정리 (자작) |
+| [html-work-report](html-work-report/) | 작업 시작 시 보고서 작성 여부와 변경 유형별 증거를 정하고, 완료 기준·증거·위험도·검수 전용 AI 결과를 담은 HTML 완료 보고서 작성 (자작) |
 | [supertonic-tts](supertonic-tts/) | 로컬 Supertonic 3로 한국어 WAV 합성, 미설치 환경 준비와 CLI·HTTP 사용 안내 (자작) |
 
 </details>
@@ -110,7 +110,7 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 | 스킬 | 설명 |
 |------|------|
 | [agent-browser](agent-browser/) | AI 에이전트용 브라우저 자동화 CLI |
-| [browser-repro-video](browser-repro-video/) | 수정 전후를 브라우저에서 재현해 캡션·강조·커서가 보이는 mp4로 녹화(자막 파일도 지원)하고 정지 화면 5초 초과 검수, 날짜 붙은 보고서 폴더의 HTML에 embed (자작) |
+| [browser-repro-video](browser-repro-video/) | 전후 비교·작동 시연 영상을 캡션·강조·커서가 보이는 mp4로 녹화(자막·내레이션 지원)하고 정지 화면 검수, 보고서 프레젠테이션 영상 제작 (자작) |
 
 </details>
 
