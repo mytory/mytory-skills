@@ -52,25 +52,43 @@ ocr delegate rule --format json <path1> <path2> ...
 
 ### 3단계: diff 가져오기
 
-1단계의 mode/ref 정보를 바탕으로 git을 직접 사용합니다:
+1단계의 mode와 ref에 따라 diff 명령을 선택합니다. 리뷰 중 모든 Git 호출에는 `git --no-pager`를 사용합니다.
+
+diff 명령은 외부 diff 프로그램, 텍스트 변환, 색상을 비활성화하여 일반 텍스트 패치를 출력합니다.
 
 **Range 모드** (preview 출력에 merge_base가 제공됨):
 ```bash
-git diff <merge_base>..<to> -- <path>
+git --no-pager diff --no-ext-diff --no-textconv --no-color <merge_base>..<to> -- "<path>"
 ```
 
 **Commit 모드**:
 ```bash
-git show <commit> -- <path>
+git --no-pager show --no-ext-diff --no-textconv --no-color <commit> -- "<path>"
 ```
 
 **Workspace 모드**:
 ```bash
 # 추적 중인 파일
-git diff HEAD -- <path>
+git --no-pager diff --no-ext-diff --no-textconv --no-color HEAD -- "<path>"
 # 추적되지 않은 새 파일 — 직접 읽기 (파일 전체가 새 코드)
-cat <path>
+cat "<path>"
 ```
+
+컨텍스트를 읽을 때는 다음 명령을 사용합니다:
+
+```bash
+git --no-pager log --no-color --oneline -- "<path>"
+git --no-pager blame --no-textconv -- "<path>"
+git --no-pager show --no-ext-diff --no-textconv --no-color "<ref>:<path>"
+```
+
+큰 diff는 선택한 모드의 명령에 `--output="<absolute-diff-file>"`을 추가합니다. 저장소 밖의 고유한 절대 경로를 선택하고 상위 디렉터리를 만듭니다. 파일 읽기 도구에서도 같은 경로를 사용합니다:
+
+```bash
+git --no-pager diff --no-ext-diff --no-textconv --no-color --output="<absolute-diff-file>" <merge_base>..<to> -- "<path>"
+```
+
+Git이 종료 코드 0으로 끝나면 파일 전체를 나누어 읽고 리뷰한 뒤 삭제합니다. Git이 실패하거나 시간 초과되면 재시도하거나 오류와 함께 `skipped`로 기록합니다. 예상과 달리 출력이 비어 있으면 preview를 다시 실행해 확인합니다.
 
 ### 4단계: 파일별 리뷰
 

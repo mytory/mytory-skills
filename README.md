@@ -150,12 +150,12 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 
 | 출처 | 스킬 |
 |------|------|
-| [mattpocock/skills](https://github.com/mattpocock/skills) (21개, 원본 `f3fc563`) | caveman, code-review, codebase-design, diagnosing-bugs, domain-modeling, edit-article, grill-me, grill-with-docs, grilling, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, writing-for-agents, zoom-out. 원본에서 사라진 기존 5개(caveman, edit-article, obsidian-vault, request-refactor-plan, zoom-out)는 이전 번역을 유지 |
-| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (3개, 원본 `b482f7a`) | design-taste-frontend, full-output-enforcement, image-to-code |
-| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `0207911`) | agent-browser |
-| [anthropics/skills](https://github.com/anthropics/skills) (원본 `683bc88`) | frontend-design |
+| [mattpocock/skills](https://github.com/mattpocock/skills) (21개, 원본 `49dd158`) | caveman, code-review, codebase-design, diagnosing-bugs, domain-modeling, edit-article, grill-me, grill-with-docs, grilling, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, writing-for-agents, zoom-out. 원본에서 사라진 기존 5개(caveman, edit-article, obsidian-vault, request-refactor-plan, zoom-out)는 이전 번역을 유지 |
+| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (3개, 원본 `717446e`) | design-taste-frontend, full-output-enforcement, image-to-code |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `44af398`) | agent-browser |
+| [anthropics/skills](https://github.com/anthropics/skills) (원본 `dbd4588`) | frontend-design |
 | [ctxrs/ctx](https://github.com/ctxrs/ctx) (원본 `56aaf352`) | ctx-agent-history-search (사용 목적에 맞춘 재구성) |
-| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개, 원본 `2d67596`) | open-code-review, open-code-review-delegate |
+| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개, 원본 `35fc3e2`) | open-code-review, open-code-review-delegate |
 | [deusyu/translate-book](https://github.com/deusyu/translate-book) (원본 `bd5424b`) | translate-long-text (TXT 처리 등 로컬 확장 유지) |
 
 ## 🔗 관련 링크
