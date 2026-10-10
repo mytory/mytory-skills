@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 보고서 HTML을 실제 브라우저로 열어 이미지·영상이 로드되는지, 상대 링크·src가 가리키는 파일이 있는지,
-// 템플릿 자리표시자({{ }})가 남지 않았는지, warn/bad 판정이 접힌 <details> 안에 숨지 않았는지 검사한다.
+// 템플릿 자리표시자({{ }})가 남지 않았는지, warn/bad 판정이 접힌 <details> 안에 숨지 않았는지,
+// 요구사항 요약(#requirements)이 5줄 이내로 있는지 검사한다.
 // 사용: node check-report.mjs <report.html>   (playwright-core가 설치된 폴더에서. channel: 'chrome')
 // 통과 0 / 위 항목 중 하나라도 걸리면 1
 import {chromium} from 'playwright-core';
@@ -32,20 +33,26 @@ const r = await page.evaluate(() => {
     videos: [...document.querySelectorAll('video')].map(v => ({src: v.getAttribute('src'), readyState: v.readyState, error: v.error?.message ?? null})),
     refs: [...document.querySelectorAll('a[href], img[src], video[src], source[src]')].map(e => e.getAttribute('href') ?? e.getAttribute('src')),
     placeholders: [...text, ...attrs],
+    requirements: (() => { const section = document.querySelector('#requirements'); return {section: !!section, lines: section ? section.querySelectorAll('li').length : 0}; })(),
     };
 });
 await browser.close();
 const badVideos = r.videos.filter(v => v.readyState < 1 || v.error);
+// 요구사항 요약은 보고서 맨 앞에 5줄 이내로 둔다(SKILL.md "내용 규칙").
+const requirementsBad = !r.requirements.section || r.requirements.lines < 1 || r.requirements.lines > 5;
 // 상대 경로가 가리키는 파일이 디스크에 있는지는 Node에서 확인한다(쿼리·해시 제거, 퍼센트 인코딩 해제).
 const dir = path.dirname(path.resolve(file));
 const missing = [...new Set(r.refs)].filter(h => h && !/^([a-z][a-z0-9+.-]*:|#|\/\/)/i.test(h))
     .filter(h => {
         try { return !fs.existsSync(path.resolve(dir, decodeURIComponent(h.split('#')[0].split('?')[0]))); } catch { return true; }
     });
-console.log(`이미지 ${r.images}개(깨짐 ${r.brokenImages.length}) · 영상 ${r.videos.length}개(로드 실패 ${badVideos.length}) · 없는 상대 경로 ${missing.length}개 · 남은 자리표시자 ${r.placeholders.length}개 · 접힌 영역의 warn/bad ${hidden.length}개`);
+console.log(`이미지 ${r.images}개(깨짐 ${r.brokenImages.length}) · 영상 ${r.videos.length}개(로드 실패 ${badVideos.length}) · 없는 상대 경로 ${missing.length}개 · 남은 자리표시자 ${r.placeholders.length}개 · 접힌 영역의 warn/bad ${hidden.length}개 · 요구사항 ${r.requirements.lines}줄`);
+if (!r.requirements.section) console.log('  요구사항 절(#requirements) 없음: 머리말 바로 아래에 5줄 이내로 둔다');
+else if (r.requirements.lines < 1) console.log('  요구사항 항목 없음: 무엇을 만든 건지 한 줄 이상 적는다');
+else if (r.requirements.lines > 5) console.log(`  요구사항 ${r.requirements.lines}줄: 5줄 이내로 묶는다`);
 r.brokenImages.forEach(s => console.log(`  깨진 이미지: ${s}`));
 badVideos.forEach(v => console.log(`  영상 로드 실패: ${v.src} ${v.error ?? ''}`));
 missing.forEach(h => console.log(`  없는 파일: ${h}`));
 r.placeholders.slice(0, 10).forEach(p => console.log(`  남은 자리표시자: ${p}`));
 if (hidden.length) { console.log('  warn/bad 판정이 접힌 영역에 있음(판정은 항상 보이게 둔다):'); hidden.forEach(t => console.log(`    ${t}`)); }
-process.exit(r.brokenImages.length || badVideos.length || missing.length || r.placeholders.length || hidden.length ? 1 : 0);
+process.exit(r.brokenImages.length || badVideos.length || missing.length || r.placeholders.length || hidden.length || requirementsBad ? 1 : 0);

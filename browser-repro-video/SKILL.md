@@ -73,7 +73,7 @@ npm ls playwright-core || npm i playwright-core   # 작업 폴더(스크래치�
 
 보고서를 다 쓴 뒤, 검토자가 보고서를 열기 전에 보는 요약 영상을 만든다. 장면을 30초까지 멈추므로 내레이션이 필수다. 새 화면을 찍지 않고 **완성된 HTML 보고서를 절별로 스크롤**하며 캡션(=내레이션 대본)을 붙인다.
 
-1. `scenes.json`을 쓴다. 장면마다 `{"target": "CSS 선택자", "caption": "1~2문장", "hold": 밀리초, "open": true(접힌 절을 열 때)}`. 순서는 검토 안내(`#review-guide`) → 완료 기준(`#criteria`) → 영상·핵심 구현 → 남은 위험(`#risks`)을 기본으로 하고, 위험도와 검토자 확인 지점을 반드시 말한다. 보고서에 없는 내용은 말하지 않는다.
+1. `scenes.json`을 쓴다. 장면마다 `{"target": "CSS 선택자", "caption": "1~2문장", "hold": 밀리초, "open": true(접힌 절을 열 때)}`. 순서는 요구사항(`#requirements`) → 검토 안내(`#review-guide`) → 완료 기준(`#criteria`) → 영상·핵심 구현 → 남은 위험(`#risks`)을 기본으로 하고, 무엇을 만들었는지와 위험도, 검토자 확인 지점을 반드시 말한다. 보고서에 없는 내용은 말하지 않는다.
 2. `node scripts/present-report.mjs "<보고서>.html" scenes.json "<보고서폴더>/videos/presentation.mp4"` — 녹화 전에 선택자와 `hold`(30초 이하)를 검사한다.
 3. 위 절차 8과 같이 `narrate.mjs --plan` → `narrate.mjs`로 음성을 입혀 `presentation-narrated.mp4`를 만든다. 음성이 장면보다 길면 `hold`를 늘려 다시 찍는다.
 4. 정지 검사는 30초 기준. 보고서의 머리말 링크를 채우고 `check-report.mjs`를 다시 돌린다.
