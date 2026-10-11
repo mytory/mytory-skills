@@ -2,13 +2,15 @@
 // 의존성: playwright-core (시스템 Chrome 사용), ffmpeg.
 import {chromium} from 'playwright-core';
 import {execFileSync} from 'node:child_process';
-import {writeFileSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
+import {writeFileSync, readFileSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir, homedir} from 'node:os';
 import {join, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-// 캡션 띠 색. html-work-report 보고서 템플릿의 잉크·판정 색과 같다.
-export const COLORS = {head: '#1b2433', bad: '#b3261e', good: '#13774a'};
+// 캡션 띠 색. 요청자가 환경 변수 REC_THEME(JSON 파일 경로)로 주입한다. 없거나 빠진 키는 아래 기본색을 쓴다.
+// head: 일반 캡션 띠·패널 글자, good/bad: 합격/불합격 캡션·패널 글자, panelBg: 오른쪽 패널 바탕, accent: 프레젠테이션 영상의 강조 윤곽선.
+export const COLORS = {head: '#1b2433', good: '#13774a', bad: '#b3261e', panelBg: '#fafbfc', accent: '#2f5bd3',
+    ...(process.env.REC_THEME ? JSON.parse(readFileSync(process.env.REC_THEME, 'utf8')) : {})};
 
 // 띠 모드(기본)에서 캡션·패널 글자를 그리는 한글 글꼴. 스킬에 포함한 Pretendard 가변 글꼴(SIL OFL, assets/fonts/)을 쓴다.
 // ffmpeg는 가변 글꼴의 기본 굵기(Regular)로 그리므로 굵은 글자는 같은 색 테두리로 굵기를 낸다. 다른 글꼴은 환경 변수 REC_FONT로 지정.
@@ -18,7 +20,7 @@ const FONT = process.env.REC_FONT ?? [
     join(homedir(), '.agents/skills/browser-repro-video'),
     join(homedir(), '.claude/skills/browser-repro-video'),
 ].map(d => join(d, 'assets/fonts/PretendardVariable.ttf')).find(f => existsSync(f)) ?? 'assets/fonts/PretendardVariable.ttf';
-const BAND = {captionSize: 26, captionLine: 34, panelSize: 22, panelLine: 30, pad: 8, topBg: '#1b2433', panelBg: '#fafbfc', ink: '#1b2433', frame: '#3a465c', margin: 24};
+const BAND = {captionSize: 26, captionLine: 34, panelSize: 22, panelLine: 30, pad: 8, topBg: COLORS.head, panelBg: COLORS.panelBg, ink: COLORS.head, frame: '#3a465c', margin: 24};
 
 // headless 녹화에는 커서가 찍히지 않으므로 마우스를 따라다니는 점(클릭 시 커졌다 줄어듦)을 페이지에 그려 넣는다.
 const cursorOverlayScript = () => {
@@ -438,7 +440,7 @@ function bandFilter(rec, dir) {
     return f.join(',');
 }
 
-// 녹화를 끝내고 webm을 mp4로 바꿔 저장한다. 변환 옵션은 ffmpeg 기본(libx264 CRF 23)으로 충분하다(분당 1MB 안팎, references/report.md).
+// 녹화를 끝내고 webm을 mp4로 바꿔 저장한다. 변환 옵션은 ffmpeg 기본(libx264 CRF 23)으로 충분하다(분당 1MB 안팎, references/file-size.md).
 // 띠 모드(기본)면 이때 캡션 띠·패널 띠를 영상에 입힌다.
 export async function saveVideo(context, page, mp4Path) {
     const video = page.video();

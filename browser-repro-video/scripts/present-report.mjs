@@ -13,7 +13,7 @@ import {readFileSync, mkdtempSync, mkdirSync, existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve, dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {openRecording, caption, holdToRead, setMaxReadMs, saveVideo, saveCaptions} from './rec-lib.mjs';
+import {openRecording, caption, holdToRead, setMaxReadMs, saveVideo, saveCaptions, COLORS} from './rec-lib.mjs';
 
 const [report, scenesFile, out] = process.argv.slice(2);
 if (!report || !scenesFile || !out) {
@@ -73,18 +73,18 @@ for (const s of scenes) {
         tick();
     }));
     // 이전 장면의 강조를 지우고 이번 대상에 파란 윤곽선을 둔다(highlight는 합격/불합격 색이라 쓰지 않는다).
-    // 윤곽선은 보고서 템플릿의 강조색, 어두운 화면에서도 보이게 바깥에 흰 테를 두른다.
+    // 윤곽선은 COLORS.accent(REC_THEME로 주입), 어두운 화면에서도 보이게 바깥에 흰 테를 두른다.
     await page.evaluate(() => document.querySelectorAll('[data-present]').forEach(e => {
         e.style.outline = '';
         e.style.boxShadow = '';
         e.removeAttribute('data-present');
     }));
-    await el.evaluate(e => {
+    await el.evaluate((e, accent) => {
         e.dataset.present = '1';
-        e.style.outline = '3px solid #2f5bd3';
+        e.style.outline = `3px solid ${accent}`;
         e.style.outlineOffset = '4px';
         e.style.boxShadow = '0 0 0 9px #ffffff';
-    });
+    }, COLORS.accent);
     await caption(page, s.caption);
     await holdToRead(page, s.hold);
 }

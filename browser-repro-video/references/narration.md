@@ -5,7 +5,7 @@
 ## 흐름
 
 ```bash
-cd 보고서폴더/videos
+cd 저장폴더
 node ~/.claude/skills/browser-repro-video/scripts/narrate.mjs final.mp4 --plan   # 1. 합성 + 계획표. 초과/밀림 있으면 종료 코드 1
 node ~/.claude/skills/browser-repro-video/scripts/narrate.mjs final.mp4          # 2. final-narrated.mp4 생성
 ffprobe -v error -show_streams final-narrated.mp4 | grep codec_type              # 3. video + audio 두 스트림 확인
@@ -13,7 +13,7 @@ ffprobe -v error -show_streams final-narrated.mp4 | grep codec_type             
 
 옵션: `--srt 읽기용.srt`(기본 `영상.srt`), `--out 출력.mp4`, `--voice M1`, `--lang ko`.
 
-산출물: `영상-narrated.mp4`, `narration-plan.json`(큐별 시작·배치 시각·음성 길이·여유·초과·밀림), `.narration/`(큐별 WAV·텍스트 캐시, 보고서에 넣지 않음).
+산출물: `영상-narrated.mp4`, `narration-plan.json`(큐별 시작·배치 시각·음성 길이·여유·초과·밀림), `.narration/`(큐별 WAV·텍스트 캐시, 전달할 결과물에 넣지 않음).
 
 ## 배치 규칙
 
@@ -33,8 +33,3 @@ ffprobe -v error -show_streams final-narrated.mp4 | grep codec_type             
 
 - 모델은 한 번 로드하고 큐를 순서대로 합성한다. 큐당 수 초(M1 Mac 기준 58큐 ≈ 8분).
 - `.narration/<id>.txt`에 적힌 문장과 같으면 다시 합성하지 않는다. 캡션을 일부만 고쳤을 때 빠르다. 큐 순서가 바뀌면 id가 달라져 다시 합성되므로 순서 변경은 마지막에.
-
-## 보고서
-
-- 내레이션 본을 `<video controls>`의 소스로 쓰고 `<track kind="subtitles" src="final.vtt">`를 함께 둔다. 캡션은 영상에 박혀 있으니 소리를 끄고 봐도 된다.
-- `narration-plan.json`은 증거 폴더에 두고, 보고서에는 "음성 설명 N큐, 합계 M초, 밀림 최대 K초"를 한 줄 적는다.
