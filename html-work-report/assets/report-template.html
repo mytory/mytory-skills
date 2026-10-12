@@ -61,11 +61,6 @@
   .ledger tr:has(td.bad) td:first-child { box-shadow:inset 4px 0 var(--bad); }
   .ledger tr:has(td.warn) { background:var(--warn-soft); } .ledger tr:has(td.bad) { background:var(--bad-soft); }
 
-  /* 검토자 확인 지점 */
-  .checkpoints { list-style:none; padding:0; margin:12px 0 0; border-top:1px solid var(--line); }
-  .checkpoints code { justify-self:start; }
-  .checkpoints li { max-width:none; margin:0; padding:10px 0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:minmax(12em, 22em) 1fr; gap:4px 20px; }
-
   /* 영상 */
   video { display:block; width:100%; border-radius:6px; background:#000; }
   .video-frame { margin:16px 0 8px; padding:10px; border-radius:10px; background:#1b2433; }
@@ -104,7 +99,6 @@
     body { font-size:16px; }
     main { padding:32px 16px 64px; }
     .masthead { grid-template-columns:1fr; }
-    .checkpoints li { grid-template-columns:1fr; }
     table { display:block; overflow-x:auto; }
   }
 </style>
@@ -146,9 +140,10 @@
 <section id="review-guide">
 <h2>검토 안내</h2>
 <p class="lead">{{위험도를 그렇게 정한 이유 한두 문장. 예) 권한 검사 코드를 공용 필터로 옮겨 모든 관리 화면에 영향이 있다.}}</p>
-<ul class="checkpoints">
-  <li><code>{{src/path/File.java:120}}</code><span>{{왜 직접 봐야 하는지. 예) 예외 시 권한 없음으로 처리하는 분기, 테스트로 다 못 덮음}}</span></li>
-</ul>
+<table>
+<tr><th style="width:36%">확인할 위치</th><th>직접 봐야 하는 이유</th></tr>
+<tr><td><code>{{src/path/File.java:120}}</code></td><td>{{예) 예외 시 권한 없음으로 처리하는 분기, 테스트로 다 못 덮음}}</td></tr>
+</table>
 </section>
 
 <!-- 완료 기준과 증거: 기준마다 한 줄. 판정 칸은 class="ok|warn|bad". 증거는 파일 링크나 영상 구간.
@@ -228,9 +223,9 @@
 </details>
 </section>
 
-<!-- 검수: 코드를 쓰지 않은 검수 전용 AI의 회차별 결과. 원문은 reviews/에 두고 링크만. 고치지 않은 지적이 있으면 결론 줄에 드러낸다. -->
+<!-- AI 검수: 코드를 쓰지 않은 검수 전용 AI의 회차별 결과. 원문은 reviews/에 두고 링크만. 고치지 않은 지적이 있으면 결론 줄에 드러낸다. -->
 <section id="reviews">
-<h2>검수</h2>
+<h2>AI 검수</h2>
 <p class="lead">{{결론 한 줄. 예) 검수 AI 2종으로 3회, 마지막 회차 지적 0건.}}</p>
 <details>
 <summary>회차별 결과 {{N}}회</summary>
@@ -260,9 +255,9 @@
 </details>
 </section>
 
-<!-- 검수 기록(선택): 사용자가 AI에게 변경 내용을 묻고 받은 답 중 핵심만. 없으면 절 삭제. -->
+<!-- 질문과 답(선택): 사용자가 AI에게 변경 내용을 묻고 받은 답 중 핵심만. 없으면 절 삭제. -->
 <section id="qa">
-<h2>검수 기록</h2>
+<h2>질문과 답</h2>
 <details>
 <summary>질문 {{N}}개</summary>
 <dl>
