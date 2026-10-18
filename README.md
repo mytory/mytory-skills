@@ -75,7 +75,7 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 | [writing-for-agents](writing-for-agents/) | 에이전트가 따르기 쉬운 스킬과 지침 작성 |
 | [update-skills](update-skills/) | 월간 점검 시 외부 출처 스킬 최신화와 한국어 번역을 수행하고 최근 결과만 기록 (자작) |
 | [html-work-report](html-work-report/) | 작업 시작 시 보고서 작성 여부와 변경 유형별 증거를 정하고, 완료 기준·증거·위험도·검수 전용 AI 결과를 담은 HTML 완료 보고서 작성 (자작) |
-| [supertonic-tts](supertonic-tts/) | 로컬 Supertonic 3로 한국어 WAV 합성, 미설치 환경 준비와 CLI·HTTP 사용 안내 (자작) |
+| [supertonic-tts](supertonic-tts/) | Supertonic으로 한국어 WAV 합성, 음성용 대본 준비와 설치·로컬 API 사용 안내 (자작) |
 
 </details>
 
