@@ -87,6 +87,18 @@ export async function openRecording({videoDir, width, height, displayWidth = 121
     return {browser, context, page};
 }
 
+// 도입 장면: 영상 맨 앞에서 "무엇을 보여 주는 영상인지"를 브라우저 화면 자리에 크게 보여 준다.
+// title: 한 줄 제목, lines: 목적·비교하는 상태·장면 순서·봐야 할 점(4~6줄). 캡션(내레이션)은 호출 쪽에서 따로 단다.
+// 앱 화면이 아니라 빈 페이지에 그리므로, 다음 장면에서 앱 주소로 다시 이동한다.
+export async function introCard(page, {title, lines}) {
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    await page.setContent(`<!doctype html><meta charset=utf-8>
+<body style="margin:0;height:100vh;display:flex;flex-direction:column;justify-content:center;padding:0 96px;box-sizing:border-box;
+background:${COLORS.panelBg};color:${COLORS.head};font-family:Pretendard,'Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+<h1 style="margin:0 0 40px;font-size:56px;line-height:1.3;font-weight:800">${esc(title)}</h1>
+<ol style="margin:0;padding-left:1.2em;font-size:36px;line-height:1.7">${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ol>`);
+}
+
 // 사람이 따라갈 수 있는 속도의 조작. 커서를 먼저 대상 위로 옮기고 잠시 멈춘 뒤 동작한다.
 export const pause = (page, ms = 700) => page.waitForTimeout(ms);
 export async function humanClick(page, locator, {before = 600, after = 800} = {}) {

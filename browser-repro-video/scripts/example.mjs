@@ -7,7 +7,7 @@ import {writeFileSync, mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {openRecording, caption, highlight, notePanel, tablePanel, humanClick, humanType, holdToRead, saveVideo, saveCaptions, COLORS} from './rec-lib.mjs';
+import {openRecording, introCard, caption, highlight, notePanel, tablePanel, humanClick, humanType, holdToRead, saveVideo, saveCaptions, COLORS} from './rec-lib.mjs';
 
 const out = process.argv[2] ?? 'smoke.mp4';
 const overlay = process.argv.includes('--overlay');
@@ -28,6 +28,15 @@ writeFileSync(demo, `<!doctype html><meta charset=utf-8><body style="font:18px s
 const states = [{tag: 'before', title: '수정 전 (master)', url: pathToFileURL(demo).href}];
 
 const {browser, context, page} = await openRecording({videoDir: work, overlay});
+
+// 도입 장면(필수): 무엇을 확인하는 영상인지, 비교하는 상태, 장면 순서와 봐야 할 점. TODO(프로젝트): 내용을 채운다.
+await introCard(page, {
+    title: '이름 저장 확인 영상',
+    lines: ['확인할 것: 이름을 입력해 저장하면 목록에 나오는가', '상태: 수정 전(master)', '장면: 이름 입력 → 저장 → 목록 확인', '봐야 할 점: 목록 첫 줄이 입력한 이름과 같은가'],
+});
+await caption(page, '이 영상은 이름을 저장하면 목록에 나오는지 확인한다. 수정 전 화면에서 이름을 입력해 저장하고 목록 첫 줄을 본다.', {burn});
+await holdToRead(page, 4000);
+
 for (const s of states) {
     // TODO(프로젝트): 로그인 등 준비 동작
     await page.goto(s.url);
