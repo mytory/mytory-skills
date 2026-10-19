@@ -21,13 +21,13 @@ npx skills add mytory/mytory-skills --list
 특정 스킬만 설치하려면 `--skill`을 지정합니다.
 
 ```bash
-npx skills add mytory/mytory-skills --skill diagnose
+npx skills add mytory/mytory-skills --skill diagnosing-bugs
 ```
 
-기본 설치 범위는 현재 프로젝트입니다. 모든 프로젝트에서 사용할 수 있도록 사용자 홈에 설치하려면 `-g`를 추가합니다. 다음은 `diagnose`를 Codex용으로 전역 설치하는 예시입니다.
+기본 설치 범위는 현재 프로젝트입니다. 모든 프로젝트에서 사용할 수 있도록 사용자 홈에 설치하려면 `-g`를 추가합니다. 다음은 `diagnosing-bugs`를 Codex용으로 전역 설치하는 예시입니다.
 
 ```bash
-npx skills add mytory/mytory-skills --skill diagnose -a codex -g
+npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 ```
 
 스킬 폴더의 스크립트와 참고 자료도 함께 설치됩니다. 스킬에서 사용하는 외부 도구와 API 인증은 각 `SKILL.md`의 안내에 따라 별도로 준비해야 합니다.
@@ -54,7 +54,7 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 
 | 스킬 | 설명 |
 |------|------|
-| [design-taste-frontend](design-taste-frontend/) | 반-슬롭 프론트엔드 랜딩페이지/포트폴리오/리디자인 |
+| [design-taste-frontend](design-taste-frontend/) | 조사 기반 방향·서체·팔레트 추첨과 페이지·앱 UI 품질 검사 (tasteskill v2) |
 | [frontend-design](frontend-design/) | 새 UI 구축/재구성 시 독특한 시각 디자인 가이드 |
 | [image-to-code](image-to-code/) | 이미지 → 코드 변환 |
 | [codebase-design](codebase-design/) | 코드베이스의 설계 선택지를 비교하고 구체화 |
@@ -152,12 +152,15 @@ npx skills add mytory/mytory-skills --skill diagnose -a codex -g
 | 출처 | 스킬 |
 |------|------|
 | [mattpocock/skills](https://github.com/mattpocock/skills) (21개, 원본 `49dd158`) | caveman, code-review, codebase-design, diagnosing-bugs, domain-modeling, edit-article, grill-me, grill-with-docs, grilling, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, writing-for-agents, zoom-out. 원본에서 사라진 기존 5개(caveman, edit-article, obsidian-vault, request-refactor-plan, zoom-out)는 이전 번역을 유지 |
-| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (3개, 원본 `717446e`) | design-taste-frontend, full-output-enforcement, image-to-code |
-| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `44af398`) | agent-browser |
+| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (2개, 원본 `b9ca2fd`) | design-taste-frontend. 원본에서 사라진 full-output-enforcement는 기존 번역 유지 |
+| [Leonxlnx/imagegen-skills](https://github.com/Leonxlnx/imagegen-skills) (원본 `beb16b0`) | image-to-code (taste-skill에서 이동, 본문 변경 없음) |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `dac13bb`) | agent-browser |
 | [anthropics/skills](https://github.com/anthropics/skills) (원본 `dbd4588`) | frontend-design |
 | [ctxrs/ctx](https://github.com/ctxrs/ctx) (원본 `56aaf352`) | ctx-agent-history-search (사용 목적에 맞춘 재구성) |
-| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개, 원본 `35fc3e2`) | open-code-review, open-code-review-delegate |
-| [deusyu/translate-book](https://github.com/deusyu/translate-book) (원본 `bd5424b`) | translate-long-text (TXT 처리 등 로컬 확장 유지) |
+| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개, 원본 `27def86`) | open-code-review, open-code-review-delegate |
+| [deusyu/translate-book](https://github.com/deusyu/translate-book) (원본 `a663b1b`) | translate-long-text (TXT 처리 등 로컬 확장 유지) |
+
+`image-to-code`의 원본은 `taste-skill`에서 `Leonxlnx/imagegen-skills`로 이동했습니다. `design-taste-frontend`의 현재 원본에는 문서에 언급된 장면 카탈로그·개별 장면·데모가 누락되어 있어 해당 번들 장면 기능은 사용할 수 없습니다. 페이지·앱 방향 추첨은 검증했습니다.
 
 ## 🔗 관련 링크
 
