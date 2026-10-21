@@ -12,15 +12,21 @@ import {fileURLToPath} from 'node:url';
 export const COLORS = {head: '#1b2433', good: '#13774a', bad: '#b3261e', panelBg: '#fafbfc', accent: '#2f5bd3',
     ...(process.env.REC_THEME ? JSON.parse(readFileSync(process.env.REC_THEME, 'utf8')) : {})};
 
-// 띠 모드(기본)에서 캡션·패널 글자를 그리는 한글 글꼴. 스킬에 포함한 Pretendard 가변 글꼴(SIL OFL, assets/fonts/)을 쓴다.
-// ffmpeg는 가변 글꼴의 기본 굵기(Regular)로 그리므로 굵은 글자는 같은 색 테두리로 굵기를 낸다. 다른 글꼴은 환경 변수 REC_FONT로 지정.
-// rec-lib.mjs를 작업 폴더에 복사해 쓰는 경우를 위해 흔한 스킬 설치 위치도 찾는다. 못 찾으면 REC_FONT로 경로를 준다.
-const FONT = process.env.REC_FONT ?? [
+// 띠 모드(기본)에서 글자를 그리는 한글 글꼴. 스킬에 포함한 글꼴(assets/fonts/)을 쓴다.
+// 위 캡션은 Pretendard ExtraBold(800), 오른쪽 패널은 Pretendard Bold(700). SIL OFL, 라이선스는 assets/fonts/Pretendard-LICENSE.txt. ffmpeg는 가변 글꼴의 굵기를 고르지 못하므로 고정 굵기 파일을 쓴다.
+// 다른 글꼴은 환경 변수 REC_CAPTION_FONT(위 캡션)·REC_FONT(패널)로 지정.
+// 글자에 외곽선(borderw)을 두르지 않는다. 획이 뭉개진다. 더 굵게 하려면 더 굵은 글꼴 파일을 쓴다.
+// rec-lib.mjs를 작업 폴더에 복사해 쓰는 경우를 위해 흔한 스킬 설치 위치도 찾는다. 못 찾으면 환경 변수로 경로를 준다.
+const skillFont = name => [
     join(dirname(fileURLToPath(import.meta.url)), '..'),
     join(homedir(), '.agents/skills/browser-repro-video'),
     join(homedir(), '.claude/skills/browser-repro-video'),
-].map(d => join(d, 'assets/fonts/PretendardVariable.ttf')).find(f => existsSync(f)) ?? 'assets/fonts/PretendardVariable.ttf';
-const BAND = {captionSize: 26, captionLine: 34, panelSize: 22, panelLine: 30, pad: 8, topBg: COLORS.head, panelBg: COLORS.panelBg, ink: COLORS.head, frame: '#3a465c', margin: 24};
+].map(d => join(d, 'assets/fonts', name)).find(f => existsSync(f)) ?? join('assets/fonts', name);
+const CAPTION_FONT = process.env.REC_CAPTION_FONT ?? skillFont('Pretendard-ExtraBold.otf');
+const PANEL_FONT = process.env.REC_FONT ?? skillFont('Pretendard-Bold.otf');
+// 위 캡션은 captionMax부터 2px씩 줄여 띠에 들어가는 가장 큰 크기로 그린다. 줄 높이는 글자 크기의 captionLeading배.
+// glyphBody: drawtext의 y(글자 상자 위)부터 한글 글자 아래까지의 높이를 글자 크기에 대한 비율로 잰 값(Pretendard). 세로 가운데 맞춤에 쓴다.
+const BAND = {captionMax: 52, captionMin: 26, captionLeading: 1.15, glyphBody: 0.87, panelSize: 29, panelLine: 40, pad: 8, topBg: COLORS.head, panelBg: COLORS.panelBg, ink: COLORS.head, frame: '#3a465c', margin: 24};
 
 // headless 녹화에는 커서가 찍히지 않으므로 마우스를 따라다니는 점(클릭 시 커졌다 줄어듦)을 페이지에 그려 넣는다.
 const cursorOverlayScript = () => {
@@ -219,12 +225,19 @@ export async function caption(page, text, {color = COLORS.head, burn = true} = {
     closeOpenCue(rec);
     const cue = {start: nowMs(rec), end: null, text};
     if (!rec.overlay) {
-        const lines = wrapText(text, BAND.captionSize, rec.width + rec.sideBand - 40);
-        const cap = maxLines(rec.topBand, BAND.captionLine);
-        if (burn && lines.length > cap) {
-            throw new Error(`캡션이 ${lines.length}줄이라 위 띠(${cap}줄)에 안 들어간다. 캡션을 줄이거나 openRecording({topBand})를 늘린다.`);
+        // 내용이 많으면 글자를 줄여 띠에 맞춘다.
+        let fit;
+        for (let size = BAND.captionMax; size >= BAND.captionMin && !fit; size -= 2) {
+            const line = Math.round(size * BAND.captionLeading);
+            const lines = wrapText(text, size, rec.width + rec.sideBand - 40);
+            if (lines.length <= maxLines(rec.topBand, line)) {
+                fit = {size, line, lines};
+            }
         }
-        Object.assign(cue, {color, burn, lines});
+        if (burn && !fit) {
+            throw new Error(`캡션이 ${BAND.captionMin}px로 줄여도 위 띠(${rec.topBand}px)에 안 들어간다. 캡션을 줄이거나 openRecording({topBand})를 늘린다.`);
+        }
+        Object.assign(cue, {color, burn, ...fit});
     }
     rec.cues.push(cue);
     rec.last = [text, color, burn];
@@ -397,19 +410,21 @@ export async function captureResponse(page, urlPart, outPath, trigger, timeout =
 
 // 띠 모드: 영상 위·아래에 띠를 덧붙이고 기록한 캡션·패널을 시각에 맞춰 drawtext로 그린다.
 function bandFilter(rec, dir) {
-    if (!existsSync(FONT)) {
-        throw new Error(`한글 글꼴이 없다: ${FONT}. 환경 변수 REC_FONT로 browser-repro-video 스킬의 assets/fonts/PretendardVariable.ttf(또는 다른 .ttf/.ttc) 경로를 지정한다.`);
+    for (const [font, env] of [[CAPTION_FONT, 'REC_CAPTION_FONT'], [PANEL_FONT, 'REC_FONT']]) {
+        if (!existsSync(font)) {
+            throw new Error(`한글 글꼴이 없다: ${font}. 환경 변수 ${env}로 browser-repro-video 스킬의 assets/fonts/ 안 글꼴(또는 다른 .ttf/.otf) 경로를 지정한다.`);
+        }
     }
     const {width, height, topBand, sideBand} = rec;
     const total = rec.end;
     const sec = ms => (ms / 1000).toFixed(3);
     const hex = c => '0x' + c.replace('#', '');
     let n = 0;
-    const text = (str, {x, y, size, color, bold, a, b}) => {
+    const text = (str, {font, x, y, size, color, a, b}) => {
         const file = join(dir, `t${n++}.txt`);
         writeFileSync(file, str);
-        return `drawtext=fontfile='${FONT}':textfile='${file}':expansion=none:fontsize=${size}:fontcolor=${hex(color)}`
-            + (bold ? `:borderw=1:bordercolor=${hex(color)}` : '') + `:x=${x}:y=${y}:enable='between(t,${sec(a)},${sec(b)})'`;
+        return `drawtext=fontfile='${font}':textfile='${file}':expansion=none:fontsize=${size}:fontcolor=${hex(color)}`
+            + `:x=${x}:y=${y}:enable='between(t,${sec(a)},${sec(b)})'`;
     };
     // 남색 바탕에 브라우저 화면을 여백만큼 띄워 놓고 얇은 테두리를 두른 뒤, 오른쪽에 패널 카드를 그린다.
     const m = BAND.margin;
@@ -425,10 +440,12 @@ function bandFilter(rec, dir) {
             continue;
         }
         f.push(`drawbox=x=0:y=0:w=iw:h=${topBand}:color=${hex(c.color)}:t=fill:enable='between(t,${sec(a)},${sec(b)})'`);
-        const blockH = c.lines.length * BAND.captionLine;
+        const blockH = c.lines.length * c.line;
+        // 띠 색이 바탕과 같으면 띠와 아래 여백이 한 칸으로 보이므로, 브라우저 위 전체(띠 + 여백)의 가운데에 놓는다.
+        const area = c.color.toLowerCase() === BAND.topBg.toLowerCase() ? topBand + m : topBand;
         c.lines.forEach((line, i) => f.push(text(line, {
-            x: '(w-text_w)/2', y: Math.round((topBand - blockH) / 2) + i * BAND.captionLine + Math.round((BAND.captionLine - BAND.captionSize) / 2),
-            size: BAND.captionSize, color: '#ffffff', bold: true, a, b,
+            font: CAPTION_FONT, x: '(w-text_w)/2', y: Math.round((area - blockH) / 2 + i * c.line + (c.line - c.size * BAND.glyphBody) / 2),
+            size: c.size, color: '#ffffff', a, b,
         })));
     }
     // 패널: 시작·끝 시각으로 구간을 나누고, 구간마다 그 시각에 열린 패널들의 줄을 이어서 그린다.
@@ -445,8 +462,8 @@ function bandFilter(rec, dir) {
             throw new Error(`${sec(a)}초 구간에 열린 패널이 합쳐 ${lines.length}줄이라 오른쪽 패널(${cap}줄)에 안 들어간다. 패널을 줄인다.`);
         }
         lines.forEach((l, i) => f.push(text(l.text, {
-            x: panelX + 24, y: topBand + m + BAND.pad * 2 + i * BAND.panelLine + Math.round((BAND.panelLine - BAND.panelSize) / 2),
-            size: BAND.panelSize, color: l.color, bold: l.head, a, b,
+            font: PANEL_FONT, x: panelX + 24, y: topBand + m + BAND.pad * 2 + i * BAND.panelLine + Math.round((BAND.panelLine - BAND.panelSize) / 2),
+            size: BAND.panelSize, color: l.color, a, b,
         })));
     }
     return f.join(',');
