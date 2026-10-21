@@ -53,11 +53,12 @@ npm ls playwright-core || npm i playwright-core   # 작업 폴더(스크래치�
    - `scripts/extract-frames.sh 영상.mp4 폴더 초...`로 구간별 핵심 프레임을 뽑아 **직접 열어 본다**: 캡션·커서·강조한 요소가 보이는가, 글자가 안 잘렸는가, **캡션이 말하는 요소·숫자를 프레임에서 눈으로 셀 수 있는가(가려지지 않았는가, 화면에 보이는 숫자와 같은가)**, 스타일이 깨지거나 로그인 화면만 찍히지 않았는가, **캡션과 주석이 실제 화면과 일치하는가**.
    - **정지 화면 검사**: `scripts/check-freeze.sh 영상.mp4` (기본 5초, 내레이션 영상은 `check-freeze.sh 영상.mp4 30`. 초과 구간의 시작·길이를 출력, 초과가 있으면 종료 코드 1). 걸리면 대기를 줄여 다시 찍거나 그 구간을 잘라 낸다. 이 검사는 음성 유무를 구분하지 않으므로, 내레이션 영상의 소리 없는 정지 구간도 직접 확인해 5초를 넘지 않는지 검수한다.
      - 기본 noise 0.0005. 커서 이동·타이핑 같은 작은 변화는 noise가 크면 "정지"로, 너무 작으면(0.0002 이하) 인코딩 잡음이 "움직임"으로 판정된다. 애매하면 0.0003과 0.001로 돌려 보고, 의심 구간은 프레임을 뽑아 눈으로 확인한다. 스피너·깜빡이는 커서가 있는 화면도 눈으로 확인.
-8. **음성 설명(내레이션)을 입힌다(선택).** 캡션(`.srt`)을 Supertonic 3 한국어 음성으로 만들어 큐 시각에 맞춰 mp4에 합친다. [references/narration.md](references/narration.md)
+8. **음성 설명(내레이션)을 입힌다(선택).** 읽기용 대본(`영상-speech.srt`)을 Supertonic 3 한국어 음성으로 만들어 큐 시각에 맞춰 mp4에 합친다. [references/narration.md](references/narration.md)
+   - 화면 자막(`영상.srt`)은 화면 글자 그대로 두고, 같은 큐 시각으로 읽기용 대본 `영상-speech.srt`를 따로 쓴다. 대본 문장은 **`supertonic-tts` 스킬을 먼저 읽고** 그 대본 규칙대로 쓴다. 이 스킬의 스크립트가 Supertonic을 직접 부르므로 그 스킬이 저절로 읽히지 않는다.
    - 먼저 `node scripts/narrate.mjs 영상.mp4 --plan`: 합성만 하고 큐별 **음성 길이 vs 장면 길이**를 표로 낸다. 음성이 장면보다 길면(초과) 캡션을 줄이거나 그 장면의 `hold`를 늘려 다시 찍는다. 밀림(드리프트)이 2초를 넘는 큐도 같은 처리.
    - 음성 합성은 홈의 `Supertonic/.venv/bin/python`(supertonic-tts 스킬의 기본 설치 위치)을 쓴다. 다른 곳에 설치했으면 `SUPERTONIC_PYTHON` 환경 변수로 지정한다. 찾지 못하면 원인을 출력하고 실패한다.
    - 통과하면 `node scripts/narrate.mjs 영상.mp4` → `영상-narrated.mp4`. 영상 트랙은 복사된다. 정지 검사는 30초 기준(`check-freeze.sh 영상.mp4 30`)으로 다시 돌리고, 소리 없는 정지 구간은 5초 기준으로 직접 확인한다.
-   - 캡션은 **읽히는 문장**으로 쓴다. URL·경로·해시·기호가 많은 캡션은 화면용 `.srt`와 별도로 읽기용 `.srt`(큐 시각 동일)를 만들어 `--srt`로 넘긴다. 자주 쓰는 기호(`→ · ≤ + % px` 등)는 `tts-batch.py`의 `SPOKEN` 표가 말로 바꾸고, 모델이 거부하는 문자는 지우고 다시 합성한다.
+   - 자주 쓰는 기호(`→ · ≤ + % px` 등)는 `tts-batch.py`의 `SPOKEN` 표가 말로 바꾸고, 모델이 거부하는 문자는 지우고 다시 합성한다.
    - 합성은 큐당 수 초가 걸린다(58큐 ≈ 8분). 결과는 `출력 폴더/.narration/`에 캐시되어 같은 문장은 다시 만들지 않는다.
 9. **지정된 폴더에 저장한다.** 영상·스크린샷·증거를 둘 폴더는 요청에서 정한다. 지정이 없으면 사용자에게 묻는다. OS 동영상 폴더에 따로 두지 않는다.
    - 파일 이름은 ASCII 소문자·숫자·하이픈만 쓴다.
@@ -83,7 +84,7 @@ npm ls playwright-core || npm i playwright-core   # 작업 폴더(스크래치�
 
 1. `scenes.json`을 쓴다. 장면마다 `{"target": "CSS 선택자", "caption": "1~2문장", "hold": 밀리초, "open": true(접힌 절을 열 때)}`. 순서와 꼭 말할 내용은 요청에서 정한 대로 하고, 정하지 않았으면 보고서의 절 순서를 따른다. 보고서에 없는 내용은 말하지 않는다.
 2. `node scripts/present-report.mjs "<보고서>.html" scenes.json "<저장폴더>/presentation.mp4"` — 녹화 전에 선택자와 `hold`(30초 이하)를 검사한다.
-3. 위 절차 8과 같이 `narrate.mjs --plan` → `narrate.mjs`로 음성을 입혀 `presentation-narrated.mp4`를 만든다. 음성이 장면보다 길면 `hold`를 늘려 다시 찍는다.
+3. 위 절차 8과 같이 `presentation.srt`로 읽기용 대본 `presentation-speech.srt`를 쓰고, `narrate.mjs --plan` → `narrate.mjs`로 음성을 입혀 `presentation-narrated.mp4`를 만든다. 음성이 장면보다 길면 `hold`를 늘려 다시 찍는다.
 4. 정지 검사는 30초 기준.
 
 ## scripts/

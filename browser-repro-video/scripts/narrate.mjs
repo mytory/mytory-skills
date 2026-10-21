@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 // 캡션(.srt)을 음성 설명으로 만들어 영상에 입힌다.
 //
-//   node narrate.mjs <영상.mp4> [--srt 자막.srt] [--out 출력.mp4] [--voice M1] [--lang ko] [--plan]
+//   node narrate.mjs <영상.mp4> [--srt 읽기용.srt] [--out 출력.mp4] [--voice random] [--lang ko] [--plan]
 //
-// - 기본 자막은 <영상>.srt. 말로 읽기 어려운 캡션(URL·경로·기호)은 따로 쓴 .srt를 --srt로 넘긴다(큐 시각은 같게).
+// - 기본 대본은 <영상>-speech.srt, 없으면 <영상>.srt. 화면 자막(<영상>.srt)은 화면 글자 그대로 두고,
+//   읽기용 대본은 같은 큐 시각에 음성 엔진 스킬의 대본 규칙대로 쓴다.
+// - 읽기용 대본의 큐 수·시각이 화면 자막과 다르면 합성하지 않고 종료 코드 1.
+// - 엔진별 대본 검사는 엔진 어댑터(tts-batch.py)가 한다.
 // - 각 큐의 음성은 큐 시작 시각에 놓는다. 앞 음성이 아직 안 끝났으면 끝난 뒤 0.25초 후로 민다(드리프트).
 // - --plan: 합성만 하고 큐별 "음성 길이 vs 다음 큐까지 여유"를 표로 보여 준다. 넘치는 큐가 있으면 종료 코드 1.
 //   캡션을 줄이거나 그 장면의 hold를 늘려 다시 찍은 뒤 입힌다.
@@ -25,13 +28,15 @@ const DRIFT_LIMIT = 2.0;   // 이보다 밀리면 화면과 설명이 어긋난�
 const args = process.argv.slice(2);
 const video = args.find(a => !a.startsWith('--') && a.endsWith('.mp4'));
 if (!video) {
-    console.error('사용: node narrate.mjs <영상.mp4> [--srt 자막.srt] [--out 출력.mp4] [--voice M1] [--lang ko] [--plan]');
+    console.error('사용: node narrate.mjs <영상.mp4> [--srt 읽기용.srt] [--out 출력.mp4] [--voice random] [--lang ko] [--plan]');
     process.exit(2);
 }
 const opt = name => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : undefined; };
-const srtPath = opt('srt') ?? video.replace(/\.mp4$/, '.srt');
+const captionSrtPath = video.replace(/\.mp4$/, '.srt');
+const speechSrtPath = video.replace(/\.mp4$/, '-speech.srt');
+const srtPath = opt('srt') ?? (fs.existsSync(speechSrtPath) ? speechSrtPath : captionSrtPath);
 const outPath = opt('out') ?? video.replace(/\.mp4$/, '-narrated.mp4');
-const voice = opt('voice') ?? 'M1';
+const voice = opt('voice') ?? 'random';
 const lang = opt('lang') ?? 'ko';
 const planOnly = args.includes('--plan');
 
@@ -53,6 +58,18 @@ function videoSeconds(file) {
 
 const cues = parseSrt(fs.readFileSync(srtPath, 'utf8'));
 if (!cues.length) { console.error(`큐가 없다: ${srtPath}`); process.exit(2); }
+
+// 읽기용 대본이 따로면 큐가 화면 자막과 짝이 맞아야 음성이 장면에 맞게 놓인다.
+if (path.resolve(srtPath) !== path.resolve(captionSrtPath) && fs.existsSync(captionSrtPath)) {
+    const captions = parseSrt(fs.readFileSync(captionSrtPath, 'utf8'));
+    const mismatch = captions.length !== cues.length
+        ? `큐 수가 다르다(화면 ${captions.length}개, 대본 ${cues.length}개)`
+        : cues.map((c, i) => Math.abs(c.start - captions[i].start) > 0.05 ? `#${i + 1} 시작 ${captions[i].start}s ≠ ${c.start}s` : null).find(Boolean);
+    if (mismatch) {
+        console.error(`읽기용 대본이 화면 자막과 맞지 않는다: ${mismatch}. ${path.basename(captionSrtPath)}의 큐 번호·시각을 그대로 두고 문장만 바꾼다.`);
+        process.exit(1);
+    }
+}
 const workDir = path.join(path.dirname(outPath), '.narration');
 fs.mkdirSync(workDir, {recursive: true});
 

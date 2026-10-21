@@ -43,11 +43,15 @@ rtk proxy ~/Supertonic/.venv/bin/supertonic serve --help
 
 ## 음성 합성
 
-한국어 음성을 생성하기 전에 LLM이 원문을 먼저 읽고, 숫자와 영어를 모두 문맥에 맞는 한글 발음으로 풀어 쓴 음성용 대본을 만듭니다. Supertonic에는 이 대본을 전달합니다. 파일 입력·CLI·HTTP API에 동일하게 적용합니다.
+Supertonic은 한국어 문장 속 영어와 숫자를 제대로 읽지 못합니다. 그래서 한국어 음성을 생성하기 전에 LLM이 원문을 먼저 읽고, 숫자와 영어를 모두 문맥에 맞는 한글 발음으로 풀어 쓴 음성용 대본을 만듭니다. Supertonic에는 이 대본을 전달합니다. 파일 입력·CLI·HTTP API에 동일하게 적용하고, 다른 스킬이 Supertonic을 직접 호출할 때(예: `browser-repro-video`의 `tts-batch.py`로 영상 내레이션을 입힐 때)에도 적용합니다.
 
-- 수량·날짜·시간·소수·단위는 실제로 읽을 형태로 씁니다. 예: `3개` → `세 개`, `10:30` → `열 시 삼십 분`, `3.5%` → `삼 점 오 퍼센트`.
-- 영어 단어·약어·제품명은 한글 발음으로 씁니다. 예: `AI` → `에이아이`, `Supertonic` → `슈퍼토닉`. `DAS`는 `다스`로 읽습니다.
-- 원문은 보존하고 음성용 대본을 별도로 저장합니다. LLM이 대본을 다시 읽어 의미와 수치가 유지되는지, 숫자와 영문자가 남아 있지 않은지 확인한 뒤 합성합니다.
+- 수량·날짜·시간·소수·단위는 실제로 읽을 형태로 씁니다. 예: `3개` → `세 개`, `10:30` → `열 시 삼십 분`, `3.5%` → `삼 점 오 퍼센트`, `229초` → `이백이십구 초`.
+- 코드·번호도 읽을 형태로 씁니다. 예: `9001` → `구천일`, `#518` → `오백십팔 번`, 포트 `8080` → `팔천팔십`.
+- 영어 단어·약어·제품명은 한글 발음으로 씁니다. 예: `AI` → `에이아이`, `Supertonic` → `슈퍼토닉`, `Save` → `세이브`, `JSON` → `제이슨`. `DAS`는 `다스`로 읽습니다.
+- 식별자와 화면 문구는 뜻이 통하게 읽습니다. 예: `out_mysql_client` → `아웃 마이에스큐엘 클라이언트`, `"Removed"` → `리무브드`.
+- 커밋 해시·URL·파일 경로는 읽어도 뜻이 없으므로 대본에서 뺍니다.
+- 원문은 보존하고 음성용 대본을 별도로 저장합니다. 영상 자막처럼 화면에 보이는 글은 영어·숫자를 그대로 둡니다. LLM이 대본을 다시 읽어 의미와 수치가 유지되는지, 숫자와 영문자가 남아 있지 않은지 확인한 뒤 합성합니다.
+- `scripts/synthesize.py`와 `browser-repro-video`의 `tts-batch.py`는 `--lang ko`일 때 대본에 영문자·숫자가 남아 있으면 합성하지 않고 남은 부분을 출력한 뒤 실패합니다.
 
 반복해서 대본 파일을 WAV로 만들 때는 UTF-8 텍스트 파일을 사용합니다. 한국어 대본을 셸 명령에 직접 넣으면 따옴표와 문장부호가 잘못 해석될 수 있으므로 파일 입력을 우선합니다.
 
@@ -56,10 +60,12 @@ rtk proxy ~/Supertonic/.venv/bin/python \
   ~/.agents/skills/supertonic-tts/scripts/synthesize.py \
   --text-file /path/to/narration.txt \
   --output /path/to/narration.wav \
-  --voice M2 --lang ko
+  --lang ko
 ```
 
-헬퍼는 `--voice` 기본값 `M2`, `--lang` 기본값 `ko`를 사용하며 출력 WAV 경로를 인자로 받습니다. SDK를 직접 쓸 때는 `TTS(auto_download=True)`, `get_voice_style(voice_name="M2")`, `synthesize(..., lang="ko")`, `save_audio(...)`를 사용합니다. 패키지 기본 모델은 `supertonic-3`입니다.
+헬퍼는 `--voice` 기본값 `random`, `--lang` 기본값 `ko`를 사용하며 출력 WAV 경로를 인자로 받습니다. SDK를 직접 쓸 때는 `TTS(auto_download=True)`, `get_voice_style(voice_name="M2")`, `synthesize(..., lang="ko")`, `save_audio(...)`를 사용합니다. 패키지 기본 모델은 `supertonic-3`입니다.
+
+목소리는 사용자가 정하지 않으면 무작위로 고릅니다. 목소리는 `F1`~`F5`, `M1`~`M5` 10개입니다(`TTS().voice_style_names`). 헬퍼는 고른 목소리를 출력합니다. 한 결과물 안에서는 목소리를 바꾸지 않습니다. 영상 하나의 내레이션을 여러 번 나눠 합성하면 처음 고른 목소리를 계속 씁니다. 아래 CLI·HTTP는 `random`을 받지 않으므로 목록에서 하나를 무작위로 골라 넣습니다.
 
 요청 범위가 내레이션 WAV 생성이면 WAV 경로를 전달하고 마칩니다. 사용자가 별도로 요청한 경우에만 ffmpeg나 전체 영상 제작 흐름을 연결합니다.
 

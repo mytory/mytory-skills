@@ -4,13 +4,15 @@
 입력 JSON(stdin 또는 --input): [{"id": "001", "text": "..."}, ...]
 출력 JSON(stdout): [{"id": "001", "path": ".../001.wav", "duration": 3.21}, ...]
 
-모델은 한 번만 로드한다. 같은 텍스트는 <id>.txt에 적힌 이전 텍스트와 비교해 바뀌지 않았으면 다시 만들지 않는다.
-실행: ~/Supertonic/.venv/bin/python tts-batch.py --out-dir DIR [--voice M1] [--lang ko]
+모델은 한 번만 로드한다. <id>.txt에 적힌 이전 목소리·문장과 같으면 다시 만들지 않는다.
+실행: ~/Supertonic/.venv/bin/python tts-batch.py --out-dir DIR [--voice random] [--lang ko]
 """
 
 import argparse
 import json
 import os
+import random
+import re
 import sys
 import wave
 from pathlib import Path
@@ -60,7 +62,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, help="큐 JSON 파일. 없으면 stdin")
     parser.add_argument("--out-dir", required=True, type=Path)
-    parser.add_argument("--voice", default="M1")
+    parser.add_argument("--voice", default="random", help="목소리 이름(F1~F5, M1~M5). random이면 처음 한 번 무작위로 고른다")
     parser.add_argument("--lang", default="ko")
     args = parser.parse_args()
 
@@ -70,11 +72,30 @@ def main():
     for cue in cues:
         cue["spoken"] = spoken(cue["text"])
 
+    # Supertonic은 한국어 문장 속 영어·숫자를 제대로 읽지 못한다. supertonic-tts 스킬의 대본 규칙대로 풀어 써야 한다.
+    if args.lang == "ko":
+        latin = [cue for cue in cues if re.search(r"[A-Za-z0-9]", cue["spoken"])]
+        if latin:
+            print(f"대본에 영문자·숫자가 남은 큐 {len(latin)}개. supertonic-tts 스킬의 대본 규칙대로 한글 발음으로 풀어 쓴다:", file=sys.stderr)
+            for cue in latin:
+                print(f"  {cue['id']}: {cue['text']}", file=sys.stderr)
+            sys.exit(3)
+
+    # random은 처음 한 번만 고르고 기록해 둔다. --plan과 실제 합성, 재실행이 같은 목소리를 쓰게 하려는 것이다.
+    voice_file = args.out_dir / "voice"
+    voice = args.voice
+    if voice == "random" and voice_file.exists():
+        voice = voice_file.read_text(encoding="utf-8").strip()
+
+    # 캐시는 목소리와 문장이 모두 같을 때만 재사용한다. 목소리가 섞이지 않게 하려는 것이다.
+    def cache_key(cue):
+        return f"{voice}\n{cue['spoken']}"
+
     todo = []
     for cue in cues:
         wav = args.out_dir / f"{cue['id']}.wav"
         txt = args.out_dir / f"{cue['id']}.txt"
-        if wav.exists() and txt.exists() and txt.read_text(encoding="utf-8") == cue["spoken"]:
+        if voice != "random" and wav.exists() and txt.exists() and txt.read_text(encoding="utf-8") == cache_key(cue):
             continue
         todo.append(cue)
 
@@ -83,12 +104,16 @@ def main():
         from supertonic import TTS  # 무거우니 필요할 때만 import
 
         tts = TTS(auto_download=True)
-        style = tts.get_voice_style(voice_name=args.voice)
+        if voice == "random":
+            voice = random.choice(tts.voice_style_names)
+            voice_file.write_text(voice, encoding="utf-8")
+        print(f"목소리: {voice}", file=sys.stderr)
+        style = tts.get_voice_style(voice_name=voice)
         for cue in todo:
             wav_data, _ = synthesize_lenient(tts, cue["spoken"], args.lang, style)
             wav = args.out_dir / f"{cue['id']}.wav"
             tts.save_audio(wav_data, str(wav))
-            (args.out_dir / f"{cue['id']}.txt").write_text(cue["spoken"], encoding="utf-8")
+            (args.out_dir / f"{cue['id']}.txt").write_text(cache_key(cue), encoding="utf-8")
             print(f"합성 {cue['id']}: {cue['spoken'][:40]}", file=sys.stderr)
 
     result = []
