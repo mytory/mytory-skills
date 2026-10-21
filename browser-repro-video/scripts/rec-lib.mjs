@@ -15,7 +15,7 @@ export const COLORS = {head: '#1b2433', good: '#13774a', bad: '#b3261e', panelBg
 // 띠 모드(기본)에서 글자를 그리는 한글 글꼴. 스킬에 포함한 글꼴(assets/fonts/)을 쓴다.
 // 위 캡션은 Pretendard ExtraBold(800), 오른쪽 패널은 Pretendard Bold(700). SIL OFL, 라이선스는 assets/fonts/Pretendard-LICENSE.txt. ffmpeg는 가변 글꼴의 굵기를 고르지 못하므로 고정 굵기 파일을 쓴다.
 // 다른 글꼴은 환경 변수 REC_CAPTION_FONT(위 캡션)·REC_FONT(패널)로 지정.
-// 글자에 외곽선(borderw)을 두르지 않는다. 획이 뭉개진다. 더 굵게 하려면 더 굵은 글꼴 파일을 쓴다.
+// 글자에 외곽선(borderw)을 두르지 않는다. 획이 뭉개진다. 더 굵게 하려면 더 굵은 글꼴 파일을 쓴다(skillFont('Pretendard-Black.otf'), 900).
 // rec-lib.mjs를 작업 폴더에 복사해 쓰는 경우를 위해 흔한 스킬 설치 위치도 찾는다. 못 찾으면 환경 변수로 경로를 준다.
 const skillFont = name => [
     join(dirname(fileURLToPath(import.meta.url)), '..'),
