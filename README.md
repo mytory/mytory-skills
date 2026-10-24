@@ -32,7 +32,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 
 스킬 폴더의 스크립트와 참고 자료도 함께 설치됩니다. 스킬에서 사용하는 외부 도구와 API 인증은 각 `SKILL.md`의 안내에 따라 별도로 준비해야 합니다.
 
-## 📂 스킬 목록 (총 35개)
+## 📂 스킬 목록 (총 37개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -45,6 +45,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 | [diagnosing-bugs](diagnosing-bugs/) | 버그와 성능 저하를 위한 재현 중심 진단 루프 |
 | [tdd](tdd/) | Red-Green-Refactor 루프를 통한 테스트 주도 개발 |
 | [prototype](prototype/) | 디자인 커밋 전 구체화를 위한 일회용 프로토타입 |
+| [laravel-admin-account](laravel-admin-account/) | Laravel 앱에 로그인 가능한 관리자·역할 계정을 만들고 실제 로그인 확인 후 되돌리기 (자작) |
 
 </details>
 
@@ -57,6 +58,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 | [frontend-design](frontend-design/) | 새 UI 구축/재구성 시 독특한 시각 디자인 가이드 |
 | [image-to-code](image-to-code/) | 이미지 → 코드 변환 |
 | [codebase-design](codebase-design/) | 코드베이스의 설계 선택지를 비교하고 구체화 |
+| [web-design-guidelines](web-design-guidelines/) | 최신 Web Interface Guidelines로 UI 코드의 접근성·UX 규칙 준수 검토 |
 
 </details>
 
@@ -145,6 +147,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 | [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (원본 `b9ca2fd`) | design-taste-frontend |
 | [Leonxlnx/imagegen-skills](https://github.com/Leonxlnx/imagegen-skills) (원본 `beb16b0`) | image-to-code (taste-skill에서 이동, 본문 변경 없음) |
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `dac13bb`) | agent-browser |
+| [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | web-design-guidelines |
 | [anthropics/skills](https://github.com/anthropics/skills) (원본 `dbd4588`) | frontend-design |
 | [ctxrs/ctx](https://github.com/ctxrs/ctx) (원본 `56aaf352`) | ctx-agent-history-search (사용 목적에 맞춘 재구성) |
 | [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개, 원본 `27def86`) | open-code-review, open-code-review-delegate |
