@@ -32,7 +32,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 
 스킬 폴더의 스크립트와 참고 자료도 함께 설치됩니다. 스킬에서 사용하는 외부 도구와 API 인증은 각 `SKILL.md`의 안내에 따라 별도로 준비해야 합니다.
 
-## 📂 스킬 목록 (총 37개)
+## 📂 스킬 목록 (총 35개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -45,7 +45,6 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 | [diagnosing-bugs](diagnosing-bugs/) | 버그와 성능 저하를 위한 재현 중심 진단 루프 |
 | [tdd](tdd/) | Red-Green-Refactor 루프를 통한 테스트 주도 개발 |
 | [prototype](prototype/) | 디자인 커밋 전 구체화를 위한 일회용 프로토타입 |
-| [full-output-enforcement](full-output-enforcement/) | LLM 출력 잘림 방지, 완전한 코드 생성 강제 |
 
 </details>
 
@@ -126,15 +125,6 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 </details>
 
 <details>
-<summary><strong>💚 웰빙 / 응원</strong></summary>
-
-| 스킬 | 설명 |
-|------|------|
-| [life-cheer](life-cheer/) | 심리학 근거 기반 응원 메시지 생성 — 힘든 날부터 평온·심심·기분 좋은 날까지. 최신 연구 출처·메시지 116개·CLI 포함 (자작) |
-
-</details>
-
-<details>
 <summary><strong>⚡ 기타</strong></summary>
 
 | 스킬 | 설명 |
@@ -152,7 +142,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 | 출처 | 스킬 |
 |------|------|
 | [mattpocock/skills](https://github.com/mattpocock/skills) (21개, 원본 `49dd158`) | caveman, code-review, codebase-design, diagnosing-bugs, domain-modeling, edit-article, grill-me, grill-with-docs, grilling, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, writing-for-agents, zoom-out. 원본에서 사라진 기존 5개(caveman, edit-article, obsidian-vault, request-refactor-plan, zoom-out)는 이전 번역을 유지 |
-| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (2개, 원본 `b9ca2fd`) | design-taste-frontend. 원본에서 사라진 full-output-enforcement는 기존 번역 유지 |
+| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (원본 `b9ca2fd`) | design-taste-frontend |
 | [Leonxlnx/imagegen-skills](https://github.com/Leonxlnx/imagegen-skills) (원본 `beb16b0`) | image-to-code (taste-skill에서 이동, 본문 변경 없음) |
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `dac13bb`) | agent-browser |
 | [anthropics/skills](https://github.com/anthropics/skills) (원본 `dbd4588`) | frontend-design |
