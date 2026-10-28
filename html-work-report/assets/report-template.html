@@ -51,9 +51,9 @@
   .risk-action { margin:6px 0 0; font-size:.9rem; font-weight:600; }
 
   /* 표: 가로줄만. 판정 색은 완료 기준 표의 왼쪽 띠와 글자색으로만 */
-  table { width:100%; border-collapse:collapse; margin:12px 0 20px; font-size:.94rem; }
-  th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
-  th { color:var(--muted); font-weight:600; font-size:.88rem; white-space:nowrap; border-bottom:1px solid var(--ink); }
+  table { width:100%; table-layout:fixed; border-collapse:collapse; margin:12px 0 20px; font-size:.94rem; }
+  th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; overflow-wrap:break-word; word-break:keep-all; }
+  th { color:var(--muted); font-weight:600; font-size:.88rem; border-bottom:1px solid var(--ink); }
   .ok { color:var(--ok); font-weight:700; } .warn { color:var(--warn); font-weight:700; } .bad { color:var(--bad); font-weight:700; }
   .ledger td:first-child { box-shadow:inset 4px 0 var(--line); padding-left:18px; }
   .ledger tr:has(td.ok) td:first-child { box-shadow:inset 4px 0 var(--ok); }
@@ -99,7 +99,8 @@
     body { font-size:16px; }
     main { padding:32px 16px 64px; }
     .masthead { grid-template-columns:1fr; }
-    table { display:block; overflow-x:auto; }
+    table { display:block; overflow-x:auto; table-layout:auto; }
+    td, th { min-width:7em; }
   }
 </style>
 </head>
