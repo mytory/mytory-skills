@@ -1,7 +1,10 @@
 .DS_Store
 /translate-long-text/scripts/__pycache__/
 /docs
+/humanize
 /humanize-korean
+/humanize-redo
+/humanize-scan
 
 # Cloudflare 스킬 (로컬 전용, 미번역)
 /agents-sdk
