@@ -48,22 +48,29 @@ python3 {baseDir}/scripts/convert.py "<file_path>" --olang "<target_lang>"
 예: MinerU 4 이상은 `mineru-kit parse "<file_path>" -o "<name>.md"`,
 Marker는 `marker_single "<file_path>" --output_dir "<dir>"`를 사용할 수 있습니다.
 옵션은 설치된 버전의 `--help`로 확인하세요. 대형 모델을 내려받는 파서는
-사용자 동의 없이 설치하지 마세요. 현재 로컬 Markdown 입력은 이미지 파일을
-temp 디렉토리로 복사하지 않으므로 이미지 참조 경로를 별도로 확인하세요.
+사용자 동의 없이 설치하지 마세요. Markdown 파일 옆의 이미지와 파일 안에
+base64로 삽입된 이미지는 temp 디렉토리로 복사됩니다. `--strip-page-numbers`와
+`--detect-page-numbers`는 Markdown·TXT 입력에는 적용되지 않습니다.
 
 선택적 인자:
 - `--temp-root "<dir>"` — temp 디렉토리 위치 지정
 - `--chunk-size <N>` — 청크당 목표 문자 수 (기본값: 6000)
 - `--strip-page-numbers` — PDF/DOCX/EPUB에서 독립된 숫자 행을 적극 제거 (기본값: off)
+- `--detect-page-numbers` — 감지된 페이지 번호 행을 EPUB/DOCX에서도 제거 (기본값: off)
+
+페이지 번호 행의 감지·제거는 PDF 입력에서만 기본으로 동작합니다. EPUB과 DOCX는
+독립된 숫자 행(장·절 번호, 연습문제 번호 등)을 모두 본문으로 유지합니다. EPUB이
+페이지 번호를 텍스트로 출력해 청크에 섞여 들어오면, 번역하기 전에 temp 디렉토리를
+삭제하고 `--detect-page-numbers`를 붙여 다시 실행하세요.
 
 이 명령은 `{filename}_temp/` 디렉토리를 생성하며 다음 파일들을 포함합니다:
-- `input.html`, `input.md` — 중간 파일 (TXT/MD 입력 시 `input.md`가 원문 그대로, `input.html`은 파이프라인 통과용 아티팩트)
+- `input.html` (Calibre·TXT 입력 시), `input.md` — 중간 파일 (TXT 입력 시 `input.md`가 원문 그대로, `input.html`은 파이프라인 통과용 아티팩트)
 - `chunk0001.md`, `chunk0002.md`, ... — 번역할 소스 청크
 - `manifest.json` — 추적 및 검증용 청크 매니페스트
 - `config.txt` — 메타데이터가 포함된 파이프라인 설정
 - `source_fingerprint.json` — 원본 파일 해시 (캐시 검증용)
 
-**참고**: TXT/MD 입력은 Calibre/pandoc 없이 네이티브로 처리됩니다. 이미지 추출은 없지만, Markdown 이미지 참조는 원문에 그대로 남아 `output.md`에서 상대 경로로 해석됩니다. 같은 파일명의 다른 확장자를 연달아 변환하면 `source_fingerprint`가 원본 변경을 감지하고 중단하므로, temp 디렉토리는 파일당 고유해야 합니다.
+**참고**: TXT/MD 입력은 Calibre/pandoc 없이 네이티브로 처리됩니다. TXT는 원문을 그대로 `input.md`로 복사하며 이미지 추출이 없습니다. MD는 YAML front matter의 메타데이터(title, author 등)나 첫 H1을 책 제목으로 읽고, 이미지는 위에 설명한 대로 temp 디렉토리로 옮깁니다. 같은 파일명의 다른 확장자를 연달아 변환하면 `source_fingerprint`가 원본 변경을 감지하고 중단하므로, temp 디렉토리는 파일당 고유해야 합니다.
 
 ## 3. 청크 발견
 
@@ -247,6 +254,7 @@ stdout을 캡처하세요. CLI는 이 청크에 나타나는(source OR alias) �
 2. 텍스트 내용만 번역하고 모든 Markdown 문법과 파일명은 유지하세요
    - 한국어 번역은 위의 서명·강조 표기 규칙을 함께 적용하세요. 서명 이탤릭은
      〈〉·《》로 바꾸고, 의미상 em은 최종 출력에서 밑줄, strong은 볼드로 표시하세요.
+   - 각주: 본문의 참조 표시 `[^12]`와 행 첫머리의 정의 표시 `[^12]:`는 그대로 유지하세요. 번호를 바꾸거나 삭제하거나 위치를 옮기지 말고, 정의 뒤의 주석 문장만 번역하세요. 정의의 이어지는 문단은 행 첫머리의 공백 네 칸 들여쓰기를 유지하세요.
 3. 빈 링크, 불필요한 문자(예: 행 끝의 '\\')를 제거하세요. 페이지 번호는 convert.py에서 이미 처리했으므로, 독립적인 숫자 행(연도 1984, 장 번호, 참조 번호 등 본문 내용)은 삭제하지 마세요.
 4. 형식과 의미를 보장하고 내용을 자연스럽고 유창하게 번역하세요
 5. 번역된 본문 내용만 출력하고 설명, 힌트, 주석 또는 대화 내용을 포함하지 마세요.
@@ -393,13 +401,17 @@ temp 디렉토리에서 `config.txt`를 읽어 `original_title` 필드를 가져
 번역된 제목으로 빌드 스크립트를 실행하세요:
 
 ```bash
-python3 {baseDir}/scripts/merge_and_build.py --temp-dir "<temp_dir>" --title "<translated_title>" --cleanup
+python3 {baseDir}/scripts/merge_and_build.py --temp-dir "<temp_dir>" --title "<translated_title>"
 ```
-
-`--cleanup` 플래그는 완전히 성공적인 빌드 후 중간 파일(청크, input.html 등)을 제거합니다. 사용자가 중간 파일 유지를 요청한 경우 `--cleanup`을 생략하세요.
 
 `epub_cover`가 지정되면 `--cover "<epub_cover>"`를, `export_name`이 지정되면
 `--export-name "<export_name>"`을 추가하세요.
+
+중간 파일은 남겨 두세요. 청크, `manifest.json`, `run_state.json`이 있어야 빌드 후에
+일부만 고치거나 선택적으로 다시 번역할 수 있습니다(11단계 참고). 사용자가 중간 파일
+삭제를 명시적으로 요청할 때만 `--cleanup`을 붙이고, 그 전에 `chunk*.md`,
+`output_chunk*.md`, `input.html`, `input.md`가 영구 삭제되며 이후 청크 하나를 고치려면
+책 전체를 다시 변환·번역해야 한다는 점을 먼저 알리세요.
 
 스크립트는 `config.txt`에서 `output_lang`을 자동으로 읽습니다. 선택적 재정의: `--lang`, `--author`. `--export-name "<stem>"`으로 출력 파일명을 사용자 친화적으로 변경할 수 있습니다 (예: `--export-name report` → `report.html`, `report.docx`, ...).
 
@@ -419,6 +431,59 @@ python3 {baseDir}/scripts/merge_and_build.py --temp-dir "<temp_dir>" --title "<t
 - 번역된 제목
 - 생성된 출력 파일 목록과 크기
 - 형식 생성 실패 사항
+- 중간 파일을 남겨 두었으므로 이후에도 일부 구간을 고칠 수 있다는 점(11단계), 책을 다 마쳤으면 정리를 요청할 수 있다는 점
+
+이 보고의 일부로 `--cleanup`을 실행하지 마세요. 사용자가 더 고칠 곳이 없다고 말한 뒤에만
+제안하고, 실행하기 전에 무엇이 삭제되는지 알리세요(9단계 참고). 9단계의 빌드 명령에 같은
+플래그를 두고 `--cleanup`만 더해 다시 실행하면 기존 산출물은 유지한 채 중간 파일만 삭제합니다.
+어떤 형식이라도 실패하면 스크립트는 정리를 건너뛰고 중간 파일을 남깁니다.
+
+## 11. 빌드 후 부분 수정
+
+빌드한 뒤 사용자가 몇 군데에서 문제를 발견하면 `output.md`가 아니라 해당 청크를 고치세요.
+청크가 하나라도 바뀌면 빌드가 청크에서 `output.md`를 다시 병합하므로 `output.md`에서 한
+수정은 사라집니다.
+
+1. 청크 찾기: `<temp_dir>/output_chunk*.md`에서 해당 구절을 검색합니다.
+2. `output_chunk<NNNN>.md`를 직접 고치거나 다시 번역하게 합니다.
+
+   **직접 수정.** `record`는 청크가 현재 원문·용어집과 일치한다고 기록하므로, 먼저
+   계획기가 이 청크에 아직 무엇을 기대하는지 확인합니다.
+
+   ```bash
+   python3 {baseDir}/scripts/run_state.py plan "<temp_dir>"
+   ```
+
+   chunk<NNNN>이 `chunks[]`에 action `translate`로 나타나면, 기록하는 것은 그 사실을
+   가립니다. 사유별로 처리하세요.
+
+   - `glossary_term_hash_changed`(`detail`에 용어 id가 나옵니다) 또는
+     `glossary_term_selection_changed`: 같은 수정에서 해당 용어를
+     `glossary.py print-terms-for-chunk "<temp_dir>" "chunk<NNNN>.md"`와 맞추세요.
+   - `manifest_source_hash_changed`: 분할 뒤에 원문 청크가 수정된 것입니다. 먼저 2단계의
+     `convert.py` 명령을 다시 실행하되 `--strip-page-numbers` 같은 페이지 번호 플래그는
+     빼세요. 청크가 이미 있으면 그 플래그는 중단하고 캐시 파일이나 temp 디렉토리 전체를
+     지우라고 안내하는데, 그러면 번역도 함께 삭제됩니다. 플래그 없이 실행하면 기존 청크를
+     유지한 채 새 해시를 `manifest.json`에 씁니다. 이 과정을 건너뛰면 다시 번역한 뒤에도
+     병합이 "Source changed since splitting"으로 멈춥니다. 다시 계획을 세우면 그 청크가
+     `source_hash_changed_since_record`로 번역 대기열에 오릅니다.
+   - `source_hash_changed_since_record` 또는 그 밖의 사유: 직접 고치지 말고 다시
+     번역하세요.
+
+   그런 다음 수정한 출력을 기록합니다.
+
+   ```bash
+   python3 {baseDir}/scripts/run_state.py record "<temp_dir>" chunk<NNNN>
+   ```
+
+   **다시 번역.** `output_chunk<NNNN>.md`를 삭제하고 선택적 재번역 계획(4단계)부터 6단계까지를
+   다시 실행합니다. 계획기는 책 전체를 다시 확인하므로 `translation_chunk_ids`에 사용자가
+   언급하지 않은 청크가 들어 있을 수 있습니다. 대개 번역 이후 용어집 용어가 바뀐 청크이며,
+   계획의 `chunks[].reasons`에 `glossary_term_selection_changed` 또는
+   `glossary_term_hash_changed`로 나옵니다. 사용자가 요청한 청크만 번역하세요. 계획이 다른
+   청크를 나열하면 그 청크 id와 사유를 사용자에게 보여 주고, 다시 번역하기 전에 물어보세요.
+3. 9단계의 빌드 명령을 같은 플래그로 다시 실행합니다. 청크가 `output.md`보다 새로우므로
+   다시 병합한 뒤 HTML과 다른 형식을 다시 만듭니다.
 
 ## 이어가기 (재개)
 

@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """
-convert.py - Convert source documents (PDF/DOCX/EPUB via Calibre HTMLZ,
-TXT/MD natively without Calibre) to Markdown chunks.
+convert.py - Convert PDF/DOCX/EPUB to Markdown chunks via Calibre HTMLZ
+(TXT is also accepted and handled natively without Calibre)
 Combines the original steps 1-2 into a single script.
+
+Markdown input (.md/.markdown) skips Calibre entirely. Use it for PDFs that
+Calibre's coordinate-heuristic reflow mangles (formulas, tables, multi-column
+layouts): extract them with a layout-aware parser such as MinerU or Marker
+first, then pass the resulting Markdown here.
 """
 
 import os
@@ -12,11 +17,15 @@ import zipfile
 import shutil
 import tempfile
 import argparse
+import base64
+import binascii
 import bisect
 import glob
+import hashlib
+import html
 import json
 import re
-import html
+import urllib.parse
 
 from manifest import create_manifest, file_hash
 
@@ -290,16 +299,332 @@ def setup_temp_directory(input_file, html_file, images_dir, temp_root=None):
         return None
 
 
-def convert_html_to_markdown(html_file, md_file, strip_page_numbers=False):
+# =============================================================================
+# Structural cleanup on pandoc's JSON AST (Calibre HTML -> Markdown)
+# =============================================================================
+
+_INLINE_TYPES = frozenset({
+    "Str", "Emph", "Underline", "Strong", "Strikeout", "Superscript", "Subscript",
+    "SmallCaps", "Quoted", "Cite", "Code", "Space", "SoftBreak", "LineBreak",
+    "Math", "RawInline", "Link", "Image", "Note", "Span",
+})
+_SPACE_TYPES = frozenset({"Space", "SoftBreak", "LineBreak"})
+_FORMATTING_TYPES = frozenset({
+    "Emph", "Underline", "Strong", "Strikeout", "Superscript", "Subscript", "SmallCaps",
+})
+# Digits or note symbols, optionally bracketed and/or followed by a period:
+# "1", "[12]", "(3)", "4.", "*", "†".
+_FOOTNOTE_MARKER_RE = re.compile(r'^[\[(]?(\d{1,4}|[*†‡§¶‖]{1,3})[\])]?\.?$')
+_NOTE_MARKER_TRAILERS = frozenset({".", ")", "]", ":"})
+
+
+def _map_inline_lists(node, fn, top_down=False):
+    """Rewrite every inline list of a pandoc JSON AST in place via fn(list) -> list."""
+    if isinstance(node, dict):
+        if isinstance(node.get("c"), list):
+            _map_inline_lists(node["c"], fn, top_down)
+        return
+    if not isinstance(node, list):
+        return
+    is_inline_list = bool(node) and all(
+        isinstance(x, dict) and x.get("t") in _INLINE_TYPES for x in node
+    )
+    if is_inline_list and top_down:
+        node[:] = fn(node)
+    for item in node:
+        _map_inline_lists(item, fn, top_down)
+    if is_inline_list and not top_down:
+        node[:] = fn(node)
+
+
+def _inline_text(inlines):
+    parts = []
+    for x in inlines:
+        t = x.get("t")
+        if t == "Str":
+            parts.append(x["c"])
+        elif t in _SPACE_TYPES:
+            parts.append(" ")
+        elif t in _FORMATTING_TYPES:
+            parts.append(_inline_text(x["c"]))
+        elif t in ("Span", "Link", "Quoted"):
+            parts.append(_inline_text(x["c"][1]))
+        elif t == "Code":
+            parts.append(x["c"][1])
+    return "".join(parts)
+
+
+def _is_anchor(inline):
+    """An element that renders nothing, e.g. an id-only <a id="page_12"/>."""
+    if inline.get("t") not in ("Span", "Link"):
+        return False
+    return all(_is_anchor(x) for x in inline["c"][1])
+
+
+def _is_filler(inline):
+    """Whitespace, or a span/link holding nothing but whitespace and anchors."""
+    if inline.get("t") in _SPACE_TYPES:
+        return True
+    if inline.get("t") not in ("Span", "Link"):
+        return False
+    return all(_is_filler(x) for x in inline["c"][1])
+
+
+def _footnote_marker(inlines):
+    match = _FOOTNOTE_MARKER_RE.match(_inline_text(inlines).strip())
+    return match.group(1) if match else None
+
+
+def _footnote_link(inline):
+    """Return (link, anchor ids) when inline is a footnote-marker link to an in-book target.
+
+    The link may sit alone or inside <sup>/<span> wrappers; the ids are every
+    anchor a note's back-link may point at (the link's own id and its wrapping
+    spans' ids).
+    """
+    t = inline.get("t")
+    if t == "Link":
+        attr, content, (url, _title) = inline["c"]
+        if url.startswith("#") and len(url) > 1 and _footnote_marker(content):
+            return inline, [attr[0]] if attr[0] else []
+        return None
+    if t in ("Superscript", "Span"):
+        content = inline["c"] if t == "Superscript" else inline["c"][1]
+        solid = [x for x in content if not _is_filler(x)]
+        if len(solid) == 1:
+            found = _footnote_link(solid[0])
+            if found and t == "Span" and inline["c"][0][0]:
+                found[1].append(inline["c"][0][0])
+            return found
+    return None
+
+
+def _index_footnote_refs(blocks):
+    """Map anchor id -> footnote reference link, for marker links inside running text.
+
+    A marker link that opens its line is a note's back-link or a contents
+    entry, never a reference, so it is not indexed.
+    """
+    refs = {}
+
+    def visit(inlines):
+        after_text = False
+        for x in inlines:
+            if after_text:
+                found = _footnote_link(x)
+                if found:
+                    link, anchor_ids = found
+                    for anchor_id in anchor_ids:
+                        refs.setdefault(anchor_id, link)
+            if not _is_filler(x):
+                after_text = True
+        return inlines
+
+    _map_inline_lists(blocks, visit)
+    return refs
+
+
+def _note_body(block, refs):
+    """Return (reference link, note inlines) when block opens with a back-link to a known reference."""
+    if block.get("t") not in ("Para", "Plain"):
+        return None
+    inlines = block["c"]
+    i = 0
+    while i < len(inlines) and _is_filler(inlines[i]):
+        i += 1
+    found = _footnote_link(inlines[i]) if i < len(inlines) else None
+    if not found:
+        return None
+    backlink = found[0]
+    ref = refs.get(backlink["c"][2][0][1:])
+    if ref is None or _footnote_marker(ref["c"][1]) != _footnote_marker(backlink["c"][1]):
+        return None
+    body = inlines[i + 1:]
+    while body and (
+        _is_filler(body[0])
+        or (body[0].get("t") == "Str" and body[0]["c"] in _NOTE_MARKER_TRAILERS)
+    ):
+        body = body[1:]
+    return (ref, body) if body else None
+
+
+def _collect_notes(blocks, refs, found):
+    """Append (ref, container, block, note blocks) for note paragraphs in body/div block lists."""
+    for block in blocks:
+        if block.get("t") == "Div":
+            attr, inner = block["c"]
+            solid = [b for b in inner if not (
+                b.get("t") in ("Para", "Plain") and all(_is_filler(x) for x in b["c"])
+            )]
+            hit = _note_body(solid[0], refs) if solid else None
+            # A div is the whole note only when the reference points at the div itself.
+            if hit and attr[0] and hit[0]["c"][2][0] == "#" + attr[0]:
+                found.append((hit[0], blocks, block, [{"t": "Para", "c": hit[1]}] + solid[1:]))
+                continue
+            _collect_notes(inner, refs, found)
+            continue
+        hit = _note_body(block, refs)
+        if hit:
+            found.append((hit[0], blocks, block, [{"t": "Para", "c": hit[1]}]))
+
+
+def _pandoc_notes(node):
+    """Return the block lists of the Note elements found anywhere in node."""
+    found = []
+    if isinstance(node, dict):
+        if node.get("t") == "Note":
+            found.append(node["c"])
+        if isinstance(node.get("c"), list):
+            found.extend(_pandoc_notes(node["c"]))
+    elif isinstance(node, list):
+        for item in node:
+            found.extend(_pandoc_notes(item))
+    return found
+
+
+def convert_footnotes(blocks):
+    """Turn EPUB-style footnotes into pandoc notes. Returns the number converted.
+
+    A reference is a short marker link in running text (`<a href="#n1"><sup>1</sup></a>`,
+    `<sup><a>1</a></sup>`, `[1]`); its note is the paragraph (or the div the
+    reference points at) that opens with a back-link to that reference with the
+    same marker. Calibre renames ids and classes, so pairing relies only on this
+    two-way link structure. Pandoc's Markdown writer then numbers the notes
+    across the whole book, so labels stay unique when per-chapter numbering
+    restarts.
+    """
+    refs = _index_footnote_refs(blocks)
+    if not refs:
+        return 0
+    candidates = []
+    _collect_notes(blocks, refs, candidates)
+
+    notes = {}
+    for ref, container, block, content in candidates:
+        notes.setdefault(id(ref), (container, block, content))
+    # Pandoc before 3.13 drops a note written inside another note, so nothing
+    # that would end up nested is converted: a reference inside a note (one
+    # pandoc already read, e.g. a DPUB-ARIA note, or one converted here) stays
+    # inline, and a note whose text holds a pandoc note stays a paragraph.
+    nested = set()
+    for note in _pandoc_notes(blocks) + [[block] for _container, block, _content in notes.values()]:
+        nested.update(id(link) for link in _index_footnote_refs(note).values())
+    for key, (_container, _block, content) in notes.items():
+        if _pandoc_notes(content):
+            nested.add(key)
+    for key in nested:
+        notes.pop(key, None)
+
+    used = set()
+
+    def replace(inlines):
+        out = []
+        for x in inlines:
+            found = _footnote_link(x)
+            key = id(found[0]) if found else None
+            if key in notes and key not in used:
+                used.add(key)
+                out.append({"t": "Note", "c": notes[key][2]})
+            else:
+                out.append(x)
+        return out
+
+    _map_inline_lists(blocks, replace, top_down=True)
+
+    for key in used:
+        container, block, _content = notes[key]
+        for i, candidate in enumerate(container):
+            if candidate is block:
+                del container[i]
+                break
+    return len(used)
+
+
+def _unwrap_inline_markup(inlines):
+    """Unwrap spans and in-book links, clear the attributes of other links, and
+    drop empty anchors inside text.
+
+    Lists made only of anchors are left alone: they become `[]` lines that
+    clean_calibre_markers() drops after its page-number pass, which keeps that
+    pass seeing the same neighbouring lines as before.
+    """
+    if all(_is_filler(x) for x in inlines):
+        return inlines
+    out = []
+    # Unwrapped children are processed in turn, so an anchor nested in a span
+    # is still dropped while the span's spaces and line breaks are kept.
+    pending = list(reversed(inlines))
+    while pending:
+        x = pending.pop()
+        t = x.get("t")
+        if _is_anchor(x):
+            continue
+        if t == "Span" or (t == "Link" and (x["c"][2][0].startswith("#") or _is_filler(x))):
+            pending.extend(reversed(x["c"][1]))
+        else:
+            if t == "Link":
+                x["c"][0] = ["", [], []]
+            out.append(x)
+    # Re-join text split by an unwrapped element, as pandoc's readers would:
+    # the Markdown writer only escapes a leading "4." or "#" it sees in one Str.
+    merged = []
+    for x in out:
+        if merged and x.get("t") == "Str" and merged[-1].get("t") == "Str":
+            merged[-1] = {"t": "Str", "c": merged[-1]["c"] + x["c"]}
+        else:
+            merged.append(x)
+    return merged
+
+
+def _clear_header_attributes(node):
+    if isinstance(node, dict):
+        if node.get("t") == "Header":
+            node["c"][1] = ["", [], []]
+        if isinstance(node.get("c"), list):
+            _clear_header_attributes(node["c"])
+    elif isinstance(node, list):
+        for item in node:
+            _clear_header_attributes(item)
+
+
+def clean_calibre_ast(doc):
+    """Structural cleanup of a pandoc JSON AST read from Calibre's HTML, in place.
+
+    - EPUB footnotes become real pandoc notes (see convert_footnotes()).
+    - In-book links lose their targets but keep their text: the ids they point
+      at do not survive into the translated book.
+    - Spans are unwrapped, so `{lang="…"}` and class attributes never reach
+      the Markdown.
+    - Empty anchors inside text (`<a id="page_12"/>`) are dropped.
+    - Heading and link attributes are cleared, whatever their id or class
+      (external links keep their URL and title).
+    """
+    blocks = doc.get("blocks", [])
+    footnotes = convert_footnotes(blocks)
+    _map_inline_lists(blocks, _unwrap_inline_markup)
+    _clear_header_attributes(blocks)
+    return footnotes
+
+
+def convert_html_to_markdown(html_file, md_file, strip_page_numbers=False, detect_page_numbers=True):
     """Convert HTML to Markdown using pandoc"""
     try:
         import pypandoc
 
-        pypandoc.convert_file(
-            html_file,
-            'markdown',
+        doc = json.loads(pypandoc.convert_file(html_file, 'json'))
+        footnotes = clean_calibre_ast(doc)
+        if footnotes:
+            print(f"Converted {footnotes} footnote(s) to Markdown footnotes")
+        pypandoc.convert_text(
+            json.dumps(doc),
+            # Without smart, typographic dashes and quotes stay Unicode instead
+            # of becoming ---, -- and backslash-escaped ASCII quotes.
+            'markdown-smart',
+            format='json',
             outputfile=md_file,
-            extra_args=['--wrap=none']
+            # block puts each note right after the paragraph citing it, so a
+            # note and its reference usually land in the same chunk.
+            extra_args=['--wrap=none', '--reference-location=block'],
         )
 
         if os.path.exists(md_file):
@@ -308,7 +633,11 @@ def convert_html_to_markdown(html_file, md_file, strip_page_numbers=False):
 
             content = content.replace('\ufeff', '')
             content = content.replace('\u00a0', ' ')
-            content = clean_calibre_markers(content, strip_page_numbers=strip_page_numbers)
+            content = clean_calibre_markers(
+                content,
+                strip_page_numbers=strip_page_numbers,
+                detect_page_numbers=detect_page_numbers,
+            )
 
             with open(md_file, 'w', encoding='utf-8') as f:
                 f.write(content)
@@ -384,18 +713,55 @@ def _detect_page_number_lines(lines):
     return {digit_indices[i] for i in lnds}
 
 
-def clean_calibre_markers(content, strip_page_numbers=False):
+_CODE_FENCE_RE = re.compile(r'^(`{3,}|~{3,})')
+
+
+def _fenced_code_line_indices(lines):
+    found = set()
+    fence = None
+    for i, line in enumerate(lines):
+        match = _CODE_FENCE_RE.match(line)
+        if fence:
+            found.add(i)
+            if (match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence)
+                    and not line[match.end():].strip()):
+                fence = None
+        elif match:
+            fence = match.group(1)
+            found.add(i)
+    return found
+
+
+def _is_empty_anchor_line(line):
+    """True for a body line that only holds empty anchors, e.g. `[]` or `[]{#page_3}`.
+
+    Indented lines are code, never anchors; fenced code is excluded by the caller.
+    """
+    if line[:1].isspace():
+        return False
+    residue = re.sub(r'\{[^}]*\}|\(#[^)\s]*\)', '', line)
+    return '[' in residue and not residue.strip('[] \t')
+
+
+def clean_calibre_markers(content, strip_page_numbers=False, detect_page_numbers=True):
     """Clean up Calibre-specific markers from markdown content.
 
-    Standalone digit lines are handled in two layers:
+    With detect_page_numbers, standalone digit lines are handled in two layers:
       1. If a line is adjacent to Calibre noise (::: fence, .ct}/.cn} marker),
          drop it — clearly leftover.
       2. Otherwise, run LNDS over all standalone digits to detect a monotonic
          page-number sequence and drop those. Outliers like years (1984),
          chapter numbers, and citation indices stay preserved.
 
+    detect_page_numbers=False keeps every standalone digit line: it is meant
+    for formats whose page numbers are not text (EPUB anchors, DOCX footers),
+    where such lines are chapter, verse or exercise numbers.
+
     Pass strip_page_numbers=True to bypass both layers and aggressively delete
     every standalone-digit line (legacy behavior).
+
+    Lines holding only empty anchors are dropped as well, but they still count
+    as neighbours for layer 1.
     """
     content = re.sub(r'\{\.calibre[^}]*\}', '', content)
     content = re.sub(r'\(#calibre_link-\d+\)', '', content)
@@ -409,6 +775,7 @@ def clean_calibre_markers(content, strip_page_numbers=False):
     lines = content.split('\n')
 
     page_number_lines = set() if strip_page_numbers else _detect_page_number_lines(lines)
+    code_lines = _fenced_code_line_indices(lines)
 
     def is_calibre_noise(line):
         s = line.strip()
@@ -440,17 +807,20 @@ def clean_calibre_markers(content, strip_page_numbers=False):
             continue
         if stripped_line.endswith('.ct}') or stripped_line.endswith('.cn}'):
             continue
+        if i not in code_lines and _is_empty_anchor_line(line):
+            continue
 
         if re.match(r'^\s*\d+\s*$', line):
             if strip_page_numbers:
                 continue
-            if i in page_number_lines:
-                continue
-            prev = prev_nonblank(i)
-            nxt = next_nonblank(i)
-            if (prev is not None and is_calibre_noise(prev)) or \
-               (nxt is not None and is_calibre_noise(nxt)):
-                continue
+            if detect_page_numbers:
+                if i in page_number_lines:
+                    continue
+                prev = prev_nonblank(i)
+                nxt = next_nonblank(i)
+                if (prev is not None and is_calibre_noise(prev)) or \
+                   (nxt is not None and is_calibre_noise(nxt)):
+                    continue
             # else: preserve as real content
 
         cleaned_lines.append(line)
@@ -461,14 +831,215 @@ def clean_calibre_markers(content, strip_page_numbers=False):
 
 
 # =============================================================================
+# Markdown input: pre-extracted Markdown (e.g. from MinerU / Marker) skips Calibre
+# =============================================================================
+
+MARKDOWN_EXTENSIONS = ('.md', '.markdown')
+CALIBRE_CONVERSION_METHOD = "calibre_htmlz"
+MARKDOWN_CONVERSION_METHOD = "markdown"
+
+_MD_IMG_RE = re.compile(r'(!\[[^\]]*\]\(\s*)(<[^>]+>|[^)\s]+)')
+_HTML_IMG_RE = re.compile(r'(<img\b[^>]*?\bsrc\s*=\s*)(["\'])(.*?)\2', re.IGNORECASE | re.DOTALL)
+_DATA_URI_RE = re.compile(r'^data:image/([A-Za-z0-9.+-]+);base64,(.*)$', re.DOTALL)
+_URI_SCHEME_RE = re.compile(r'^[A-Za-z][A-Za-z0-9+.-]*:')
+_DATA_URI_EXTENSIONS = {
+    "jpeg": ".jpg", "jpg": ".jpg", "png": ".png", "gif": ".gif",
+    "webp": ".webp", "svg+xml": ".svg", "bmp": ".bmp",
+}
+
+_FRONT_MATTER_RE = re.compile(r'\A---[ \t]*\n(.*?)\n(?:---|\.\.\.)[ \t]*(?:\n|\Z)', re.DOTALL)
+_FRONT_MATTER_KEYS = {
+    "title": "title",
+    "author": "creator",
+    "creator": "creator",
+    "publisher": "publisher",
+    "lang": "language",
+    "language": "language",
+}
+
+
+def _unquote_yaml_scalar(value):
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        return value[1:-1]
+    return value
+
+
+def split_front_matter(content):
+    """Split a leading YAML front matter block off content.
+
+    Returns (metadata, body). Only flat `key: value` scalars and `- item`
+    lists for the keys in _FRONT_MATTER_KEYS are read; anything fancier is
+    ignored. A leading `---` block without any `key:` line is left alone,
+    since it is more likely a thematic break than metadata.
+    """
+    match = _FRONT_MATTER_RE.match(content)
+    if not match:
+        return {}, content
+    lines = match.group(1).split('\n')
+    if not any(re.match(r'^[A-Za-z_][\w-]*\s*:', line) for line in lines):
+        return {}, content
+
+    metadata = {}
+    current_key = None
+    for line in lines:
+        key_match = re.match(r'^([A-Za-z_][\w-]*)\s*:\s*(.*)$', line)
+        if key_match:
+            key = _FRONT_MATTER_KEYS.get(key_match.group(1).lower())
+            value = _unquote_yaml_scalar(key_match.group(2))
+            current_key = None
+            if key and key not in metadata:
+                if value:
+                    metadata[key] = value
+                else:
+                    current_key = key  # value follows as a `- item` list
+            continue
+        item_match = re.match(r'^\s+-\s+(.+)$', line)
+        if current_key and item_match:
+            item = _unquote_yaml_scalar(item_match.group(1))
+            if item:
+                existing = metadata.get(current_key)
+                metadata[current_key] = f"{existing}, {item}" if existing else item
+    return metadata, content[match.end():]
+
+
+def _first_h1_title(content):
+    """Return the text of the document's first heading if it is level 1.
+
+    Layout parsers put a paper's title first, as `# Title`. If the first
+    heading is deeper than H1 it is a section, not the title, so return None.
+    """
+    in_fence = False
+    for line in content.split('\n'):
+        stripped = line.strip()
+        if stripped.startswith('```'):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        heading = re.match(r'^(#{1,6})\s+(.*?)\s*#*\s*$', stripped)
+        if heading:
+            if len(heading.group(1)) != 1:
+                return None
+            title = re.sub(r'\s*\{[^}]*\}$', '', heading.group(2)).strip()
+            return title or None
+    return None
+
+
+def markdown_metadata(content):
+    """Book metadata for Markdown input: front matter first, then the first H1."""
+    metadata, body = split_front_matter(content.replace('﻿', ''))
+    if 'title' not in metadata:
+        title = _first_h1_title(body)
+        if title:
+            metadata['title'] = title
+    return metadata
+
+
+def import_markdown(md_path, temp_dir):
+    """Return Markdown content ready for chunking, with images moved under temp_dir/images/.
+
+    Relative image paths are resolved against the Markdown file's directory
+    and copied in; base64 data URIs (MinerU inlines images that way) are
+    decoded to files so chunks handed to translators never carry image
+    payloads. Remote URLs stay untouched. YAML front matter is dropped from
+    the body — its metadata goes to config.txt via markdown_metadata().
+    """
+    with open(md_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    content = content.replace('﻿', '').replace(' ', ' ')
+    _, content = split_front_matter(content)
+
+    md_dir = os.path.dirname(os.path.abspath(md_path))
+    images_dir = os.path.join(temp_dir, "images")
+    refs = {}
+    stored = {}
+    embedded_count = 0
+
+    def store(name, data):
+        base, ext = os.path.splitext(name)
+        digest = hashlib.sha256(data).hexdigest()
+        candidate, n = name, 1
+        while candidate in stored and stored[candidate] != digest:
+            n += 1
+            candidate = f"{base}-{n}{ext}"
+        if candidate not in stored:
+            os.makedirs(images_dir, exist_ok=True)
+            with open(os.path.join(images_dir, candidate), 'wb') as out:
+                out.write(data)
+            stored[candidate] = digest
+        return f"images/{candidate}"
+
+    def localize(target):
+        nonlocal embedded_count
+        raw = target[1:-1] if target.startswith('<') and target.endswith('>') else target
+        if raw in refs:
+            return refs[raw]
+        new_ref = target
+        data_uri = _DATA_URI_RE.match(raw)
+        if data_uri:
+            try:
+                data = base64.b64decode(data_uri.group(2))
+            except (binascii.Error, ValueError):
+                data = b''
+            if data:
+                subtype = data_uri.group(1).lower()
+                ext = _DATA_URI_EXTENSIONS.get(subtype, '.' + re.sub(r'[^a-z0-9]', '', subtype))
+                embedded_count += 1
+                new_ref = store(f"embedded-{embedded_count:04d}{ext}", data)
+            else:
+                print("Warning: could not decode an embedded data-URI image; left inline")
+        elif not _URI_SCHEME_RE.match(raw) and not raw.startswith('#'):
+            src = os.path.normpath(os.path.join(md_dir, urllib.parse.unquote(raw)))
+            if os.path.isfile(src):
+                with open(src, 'rb') as f:
+                    new_ref = store(os.path.basename(src), f.read())
+            else:
+                print(f"Warning: image not found next to the Markdown file, reference kept as-is: {raw}")
+        refs[raw] = new_ref
+        return new_ref
+
+    content = _MD_IMG_RE.sub(lambda m: m.group(1) + localize(m.group(2)), content)
+    content = _HTML_IMG_RE.sub(
+        lambda m: f"{m.group(1)}{m.group(2)}{localize(m.group(3))}{m.group(2)}", content
+    )
+
+    if stored:
+        print(f"Localized {len(stored)} image(s) into {images_dir}/")
+    return content
+
+
+def import_markdown_input(input_file, input_md, temp_dir):
+    """Copy a Markdown source into temp_dir/input.md with its images localized."""
+    os.makedirs(temp_dir, exist_ok=True)
+    content = import_markdown(input_file, temp_dir)
+    if not content.strip():
+        print(f"Error: {input_file} has no content to translate")
+        return False
+    with open(input_md, 'w', encoding='utf-8') as f:
+        f.write(content)
+    print(f"Markdown import successful: {input_md}")
+    return True
+
+
+# =============================================================================
 # Structural block parsing and chunk splitting (Step 3)
 # =============================================================================
+
+# Pandoc footnote labels cannot contain whitespace, ^, [ or ].
+_FOOTNOTE_DEF_RE = re.compile(r'^ {0,3}\[\^[^\]\s^\[]+\]:')
+
+
+def _is_indented_text(line):
+    return line.startswith(('    ', '\t')) and bool(line.strip())
+
 
 def parse_structural_blocks(content):
     """Parse markdown into structural blocks that should not be split.
 
     Returns list of (text, block_type) tuples where block_type is one of:
-    'heading', 'code_block', 'math_block', 'table', 'list', 'blockquote', 'image', 'paragraph'
+    'heading', 'code_block', 'math_block', 'table', 'list', 'blockquote',
+    'footnote', 'image', 'paragraph'
     """
     blocks = []
     lines = content.split('\n')
@@ -491,7 +1062,10 @@ def parse_structural_blocks(content):
             blocks.append(('\n'.join(block_lines), 'code_block'))
             continue
 
-        # Display math must remain in one chunk, even when it contains list or table syntax.
+        # Display math ($$ ... $$). Lines inside may look like list items or
+        # tables, so the block must be kept whole. Like pandoc, never pair
+        # delimiters across a blank line — an unclosed $$ must not swallow
+        # the rest of the chapter.
         if stripped.startswith('$$'):
             if len(stripped) >= 4 and stripped.endswith('$$'):
                 blocks.append((line, 'math_block'))
@@ -499,10 +1073,10 @@ def parse_structural_blocks(content):
                 continue
             end = None
             for j in range(i + 1, len(lines)):
-                next_line = lines[j].strip()
-                if not next_line:
+                s = lines[j].strip()
+                if not s:
                     break
-                if next_line.endswith('$$'):
+                if s.endswith('$$'):
                     end = j
                     break
             if end is not None:
@@ -562,6 +1136,23 @@ def parse_structural_blocks(content):
             blocks.append(('\n'.join(block_lines), 'list'))
             continue
 
+        # Footnote definition plus its indented continuation paragraphs. Kept
+        # whole: merging strips each chunk, which would un-indent a
+        # continuation that started the next chunk and detach it from its note.
+        if _FOOTNOTE_DEF_RE.match(line):
+            block_lines = [line]
+            i += 1
+            while i < len(lines):
+                if _is_indented_text(lines[i]) or (
+                    not lines[i].strip() and i + 1 < len(lines) and _is_indented_text(lines[i + 1])
+                ):
+                    block_lines.append(lines[i])
+                    i += 1
+                else:
+                    break
+            blocks.append(('\n'.join(block_lines), 'footnote'))
+            continue
+
         # Image line (standalone or with surrounding caption)
         if re.match(r'!\[', stripped):
             blocks.append((line, 'image'))
@@ -615,6 +1206,12 @@ def merge_blocks_to_chunks(blocks, target_size=6000):
         # If a single block is oversized, handle degradation
         if block_size > target_size * 2:
             flush()
+            if btype == 'footnote':
+                # A continuation paragraph cut loose from its `[^N]:` line
+                # loses its indent when chunks are merged and becomes body text.
+                print(f"  WARNING: Oversized footnote ({block_size} chars), kept in one chunk")
+                chunks.append(text)
+                continue
             print(f"  WARNING: Oversized {btype} block ({block_size} chars), force-splitting")
             sub_chunks = _force_split_block(text, target_size)
             chunks.extend(sub_chunks)
@@ -632,7 +1229,9 @@ def merge_blocks_to_chunks(blocks, target_size=6000):
         current_size += block_size
 
     flush()
-    return chunks
+    # The blank line after a final oversized block would otherwise be its own
+    # chunk, and an empty translation of it fails the merge.
+    return [chunk for chunk in chunks if chunk.strip()]
 
 
 def _force_split_block(text, target_size):
@@ -743,7 +1342,8 @@ def _find_existing_chunk_files(temp_dir):
     return sorted(chunk_files)
 
 
-def create_config_file(temp_dir, input_file, input_lang, output_lang, metadata=None):
+def create_config_file(temp_dir, input_file, input_lang, output_lang, metadata=None,
+                       conversion_method=CALIBRE_CONVERSION_METHOD):
     """Create config.txt file for the pipeline"""
     try:
         config_file = os.path.join(temp_dir, "config.txt")
@@ -752,7 +1352,7 @@ def create_config_file(temp_dir, input_file, input_lang, output_lang, metadata=N
 input_file={input_file}
 input_lang={input_lang}
 output_lang={output_lang}
-conversion_method=calibre_htmlz
+conversion_method={conversion_method}
 """
         if metadata:
             config_content += f"\n# Book Metadata\n"
@@ -792,12 +1392,13 @@ def _do_split_and_manifest(temp_dir, input_md, chunk_size):
 
 
 def _check_strip_page_numbers_cache_conflict(strip_flag, temp_dir, input_md):
-    """Return list of cached files that would silently neutralize --strip-page-numbers.
+    """Return cached files that would silently neutralize a page-number flag.
 
-    The flag only takes effect inside clean_calibre_markers, which runs during
-    HTML→Markdown conversion. If input.md or chunk*.md already exist from a
-    prior run, both are reused as-is and the flag becomes a no-op. Surface
-    that conflict so the user knows to clean up.
+    --strip-page-numbers and --detect-page-numbers only take effect inside
+    clean_calibre_markers, which runs during HTML→Markdown conversion. If
+    input.md or chunk*.md already exist from a prior run, both are reused
+    as-is and the flag becomes a no-op. Surface that conflict so the user
+    knows to clean up.
     """
     if not strip_flag:
         return []
@@ -821,7 +1422,7 @@ def _check_strip_page_numbers_cache_conflict(strip_flag, temp_dir, input_md):
 def _abort_on_strip_cache_conflict(blockers, temp_dir):
     if not blockers:
         return
-    print("Error: --strip-page-numbers cannot take effect because cached files exist:")
+    print("Error: page-number options cannot take effect because cached files exist:")
     for b in blockers:
         print(f"  - {b}")
     print(f"Delete the cached files (or remove the entire {temp_dir}/ directory) and re-run.")
@@ -829,7 +1430,7 @@ def _abort_on_strip_cache_conflict(blockers, temp_dir):
 
 
 def _setup_text_temp_dir(input_file, temp_root=None):
-    """Prepare temp dir for plain-text (TXT/MD) sources.
+    """Prepare temp dir for plain-text (TXT) sources.
 
     Writes input.html (minimal passthrough artifact) and input.md (the
     authoritative source) directly, so the shared chunk pipeline reuses the
@@ -873,8 +1474,14 @@ def _setup_text_temp_dir(input_file, temp_root=None):
 
 def main():
     """Main conversion function"""
-    parser = argparse.ArgumentParser(description="Convert source documents to markdown chunks (PDF/DOCX/EPUB via Calibre HTMLZ; TXT/MD natively)")
-    parser.add_argument("input_file", help="Input file (PDF, DOCX, EPUB, TXT, or MD)")
+    parser = argparse.ArgumentParser(
+        description="Convert PDF/DOCX/EPUB (via Calibre HTMLZ), Markdown, or TXT (native) to markdown chunks"
+    )
+    parser.add_argument(
+        "input_file",
+        help="Input file: PDF, DOCX, or EPUB (converted by Calibre), TXT (read natively), or Markdown (.md/.markdown), "
+             "e.g. the output of a layout-aware PDF parser such as MinerU or Marker",
+    )
     parser.add_argument("-l", "--ilang", default="auto", help="Input language (default: auto)")
     parser.add_argument("--olang", default="zh", help="Output language (default: zh)")
     parser.add_argument("--chunk-size", type=int, default=6000, help="Target chunk size in characters (default: 6000)")
@@ -886,8 +1493,13 @@ def main():
     parser.add_argument(
         "--strip-page-numbers",
         action="store_true",
-        help="Aggressively delete every standalone-digit line (legacy behavior). "
-             "Default is off: standalone digits are preserved unless adjacent to Calibre noise.",
+        help="Aggressively delete every standalone-digit line (legacy behavior).",
+    )
+    parser.add_argument(
+        "--detect-page-numbers",
+        action="store_true",
+        help="Drop detected page-number lines from EPUB/DOCX too. By default only "
+             "PDF input is cleaned this way; EPUB/DOCX keep every standalone number.",
     )
 
     args = parser.parse_args()
@@ -898,46 +1510,31 @@ def main():
         sys.exit(1)
 
     file_ext = os.path.splitext(input_file)[1].lower()
-    if file_ext not in ['.pdf', '.docx', '.epub', '.txt', '.md', '.markdown']:
+    is_markdown = file_ext in MARKDOWN_EXTENSIONS
+    is_text = file_ext == '.txt'
+    if file_ext not in ['.pdf', '.docx', '.epub'] and not is_markdown and not is_text:
         print(f"Error: Unsupported file type: {file_ext}")
         sys.exit(1)
+    page_number_flag = args.strip_page_numbers or args.detect_page_numbers
+    if (is_markdown or is_text) and page_number_flag:
+        flag = "--strip-page-numbers" if args.strip_page_numbers else "--detect-page-numbers"
+        print(f"Error: {flag} only cleans Calibre output; it does not apply to "
+              f"{'Markdown' if is_markdown else 'TXT'} input.")
+        sys.exit(1)
+    # Only PDFs carry page numbers as text. EPUB page numbers are invisible
+    # anchors and Calibre drops DOCX footers, so their digit lines are content.
+    detect_page_numbers = args.detect_page_numbers or file_ext == '.pdf'
 
-    # Plain-text sources: native pipeline, no Calibre/pandoc required.
-    if file_ext in ('.txt', '.md', '.markdown'):
+    if is_text:
         print("=== Plain-Text Source Pipeline (no Calibre needed) ===")
-        print(f"Input file: {input_file}")
-        print(f"Target chunk size: {args.chunk_size} characters")
-        current_fingerprint = source_fingerprint(input_file)
-        temp_dir = _setup_text_temp_dir(input_file, args.temp_root)
-        if not temp_dir:
-            sys.exit(1)
-        _abort_on_source_cache_mismatch(
-            *check_source_cache(temp_dir, current_fingerprint), temp_dir=temp_dir
-        )
-        input_md = os.path.join(temp_dir, "input.md")
-        chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
-        if chunk_count == 0:
-            sys.exit(1)
-        metadata = {'title': os.path.splitext(os.path.basename(input_file))[0]}
-        create_config_file(temp_dir, input_file, args.ilang, args.olang, metadata)
-        _write_source_fingerprint(temp_dir, current_fingerprint)
-        print("Conversion completed successfully!")
-        print(f"Temp directory: {temp_dir}")
-        return
-
-    print("=== File Conversion via Calibre HTMLZ ===")
+    elif is_markdown:
+        print("=== Markdown Import (no Calibre) ===")
+    else:
+        print("=== File Conversion via Calibre HTMLZ ===")
     print(f"Input file: {input_file}")
     print(f"Target chunk size: {args.chunk_size} characters")
     if args.temp_root:
         print(f"Temp root: {args.temp_root}")
-
-    calibre_path = find_calibre_convert()
-    if not calibre_path:
-        print("Error: Calibre ebook-convert not found")
-        print("Please install Calibre: https://calibre-ebook.com/")
-        sys.exit(1)
-
-    htmlz_file = f"{os.path.splitext(input_file)[0]}.htmlz"
 
     try:
         temp_dir = build_temp_dir(input_file, args.temp_root)
@@ -945,6 +1542,48 @@ def main():
         _abort_on_source_cache_mismatch(
             *check_source_cache(temp_dir, current_fingerprint), temp_dir=temp_dir
         )
+
+        if is_text:
+            if not _setup_text_temp_dir(input_file, args.temp_root):
+                sys.exit(1)
+            input_md = os.path.join(temp_dir, "input.md")
+            chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
+            if chunk_count == 0:
+                sys.exit(1)
+            metadata = {'title': os.path.splitext(os.path.basename(input_file))[0]}
+            create_config_file(temp_dir, input_file, args.ilang, args.olang, metadata)
+            _write_source_fingerprint(temp_dir, current_fingerprint)
+            print("Conversion completed successfully!")
+            print(f"Temp directory: {temp_dir}")
+            return
+
+        if is_markdown:
+            input_md = os.path.join(temp_dir, "input.md")
+            with open(input_file, 'r', encoding='utf-8') as f:
+                metadata = markdown_metadata(f.read())
+            if os.path.exists(input_md):
+                print("Skipping Markdown import - input.md already exists")
+            elif not import_markdown_input(input_file, input_md, temp_dir):
+                sys.exit(1)
+
+            chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
+            if chunk_count == 0:
+                sys.exit(1)
+
+            create_config_file(temp_dir, input_file, args.ilang, args.olang, metadata,
+                               conversion_method=MARKDOWN_CONVERSION_METHOD)
+            _write_source_fingerprint(temp_dir, current_fingerprint)
+            print("Conversion completed successfully!")
+            print(f"Temp directory: {temp_dir}")
+            print(f"Markdown chunks: {chunk_count} files")
+            return
+
+        calibre_path = find_calibre_convert()
+        if not calibre_path:
+            print("Error: Calibre ebook-convert not found")
+            print("Please install Calibre: https://calibre-ebook.com/")
+            sys.exit(1)
+
         input_html_path = os.path.join(temp_dir, "input.html")
 
         if os.path.exists(input_html_path):
@@ -971,13 +1610,15 @@ def main():
 
             input_md = os.path.join(temp_dir, "input.md")
             _abort_on_strip_cache_conflict(
-                _check_strip_page_numbers_cache_conflict(args.strip_page_numbers, temp_dir, input_md),
+                _check_strip_page_numbers_cache_conflict(page_number_flag, temp_dir, input_md),
                 temp_dir,
             )
             if os.path.exists(input_md):
                 print(f"Skipping HTML to Markdown conversion - input.md already exists")
             else:
-                if not convert_html_to_markdown(input_html_path, input_md, strip_page_numbers=args.strip_page_numbers):
+                if not convert_html_to_markdown(input_html_path, input_md,
+                                                strip_page_numbers=args.strip_page_numbers,
+                                                detect_page_numbers=detect_page_numbers):
                     sys.exit(1)
 
             chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
@@ -990,10 +1631,14 @@ def main():
             print(f"Temp directory: {temp_dir}")
             return
 
-        if not convert_to_htmlz(input_file, htmlz_file, calibre_path):
-            sys.exit(1)
-
         with tempfile.TemporaryDirectory() as extract_dir:
+            # Never next to the source: that path may be the user's own
+            # <book>.htmlz, which Calibre would overwrite and we would delete.
+            htmlz_name = os.path.splitext(os.path.basename(input_file))[0] + ".htmlz"
+            htmlz_file = os.path.join(extract_dir, htmlz_name)
+            if not convert_to_htmlz(input_file, htmlz_file, calibre_path):
+                sys.exit(1)
+
             html_file, images_dir = extract_htmlz(htmlz_file, extract_dir)
             if not html_file:
                 sys.exit(1)
@@ -1008,13 +1653,15 @@ def main():
             input_md = os.path.join(temp_dir, "input.md")
 
             _abort_on_strip_cache_conflict(
-                _check_strip_page_numbers_cache_conflict(args.strip_page_numbers, temp_dir, input_md),
+                _check_strip_page_numbers_cache_conflict(page_number_flag, temp_dir, input_md),
                 temp_dir,
             )
             if os.path.exists(input_md):
                 print(f"Skipping HTML to Markdown conversion - input.md already exists")
             else:
-                if not convert_html_to_markdown(input_html, input_md, strip_page_numbers=args.strip_page_numbers):
+                if not convert_html_to_markdown(input_html, input_md,
+                                                strip_page_numbers=args.strip_page_numbers,
+                                                detect_page_numbers=detect_page_numbers):
                     sys.exit(1)
 
             chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
@@ -1027,9 +1674,6 @@ def main():
             print("Conversion completed successfully!")
             print(f"Temp directory: {temp_dir}")
             print(f"Markdown chunks: {chunk_count} files")
-
-            if os.path.exists(htmlz_file):
-                os.remove(htmlz_file)
 
     except KeyboardInterrupt:
         print("\nConversion interrupted by user")

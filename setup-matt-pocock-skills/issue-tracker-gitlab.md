@@ -21,7 +21,7 @@
 `yes`이면 MR에도 이슈와 같은 라벨과 상태를 적용하고, 이에 대응하는 `glab mr` 명령을 사용합니다.
 
 - **MR 읽기**: `glab mr view <number> --comments`, 차이는 `glab mr diff <number>`.
-- **분류할 외부 MR 목록**: `glab mr list -F json`을 실행한 뒤 프로젝트 멤버나 소유자가 작성하지 않은 MR만 남기세요. 관리자가 진행 중인 작업을 제외하고 외부 기여자의 MR을 대상으로 합니다.
+- **분류할 외부 MR 목록**: `glab mr list -O json`을 실행한 뒤 프로젝트 멤버나 소유자가 작성하지 않은 MR만 남기세요. 관리자가 진행 중인 작업을 제외하고 외부 기여자의 MR을 대상으로 합니다.
 - **댓글 / 라벨 / 닫기**: `glab mr note`, `glab mr update --label`/`--unlabel`, `glab mr close`.
 
 GitLab은 이슈와 MR 번호를 별도로 매깁니다. 관리자가 어느 유형을 말하는지 알면 `#42`를 식별할 수 있습니다.
@@ -39,8 +39,8 @@ GitLab 이슈를 만드세요.
 `/wayfinder`에서 사용합니다. **지도**는 이슈 하나이며 **하위** 이슈가 티켓입니다.
 
 - **지도**: `wayfinder:map` 라벨이 달린 단일 이슈. Notes / Decisions-so-far / Fog 본문을 담습니다. `glab issue create --label wayfinder:map`. (기본 epic 기능이 있는 GitLab 요금제에서는 epic을 지도로 사용할 수도 있습니다. 라벨이 달린 이슈는 어디서나 사용할 수 있습니다.)
-- **하위 티켓**: 설명 맨 위에 `Part of #<map>`를 적고 `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`) 라벨을 단 이슈입니다. 작업을 선점하면 담당 개발자에게 할당합니다.
+- **하위 티켓**: 설명 맨 위에 `Part of #<map>`를 적고, 지도에 연결하고 (`glab issue create --linked-issues <map> --link-type relates_to`), `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`) 라벨을 단 이슈입니다. 작업을 선점하면 담당 개발자에게 할당합니다.
 - **차단 관계**: UI에 표시되는 GitLab의 **기본 차단 링크**를 기준으로 삼습니다. `/blocked_by #<n>` 빠른 작업을 댓글로 게시하세요 (`glab issue note <child> --message "/blocked_by #<blocker>"`). 기본 차단 링크는 Premium/Ultimate 기능입니다. 무료 요금제 등에서 사용할 수 없으면 설명 맨 위에 `Blocked by: #<n>, #<n>`을 적으세요. 모든 차단 이슈가 닫히면 티켓의 차단이 해제됩니다.
-- **다음 작업 조회**: 지도의 하위 이슈에 범위를 맞춰 `glab issue list -O json`을 실행하세요. 열린 차단 이슈(열린 이슈를 가리키는 기본 `blocked_by` 링크: `glab api projects/:id/issues/<child-iid>/links`, 또는 `Blocked by` 행의 열린 이슈)가 있거나 담당자가 있는 이슈는 제외합니다. 지도에 먼저 나온 이슈를 선택합니다.
+- **다음 작업 조회**: `glab api projects/:id/issues/<map>/links`로 지도의 하위 이슈를 나열하고 `wayfinder:<type>` 라벨이 달린 열린 이슈만 남기세요. 열린 차단 이슈(열린 이슈를 가리키는 기본 `blocked_by` 링크: `glab api projects/:id/issues/<child-iid>/links`, 또는 `Blocked by` 행의 열린 이슈)가 있거나 담당자가 있는 이슈는 제외합니다. 지도에 먼저 나온 이슈를 선택합니다.
 - **작업 선점**: 세션의 첫 쓰기 작업으로 `glab issue update <n> --assignee @me`를 실행합니다.
 - **해결**: `glab issue note <n> --message "<answer>"`, `glab issue close <n>` 순으로 실행한 뒤 지도의 Decisions-so-far에 맥락 요약과 링크를 덧붙입니다.

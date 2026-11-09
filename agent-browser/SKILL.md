@@ -1,7 +1,7 @@
 ---
 name: agent-browser
 description: AI 에이전트용 브라우저 자동화 CLI. 사용자가 웹사이트를 열거나 탐색하고, 양식을 작성하고, 버튼을 클릭하고, 스크린샷을 찍고, 데이터를 추출하고, 웹 앱을 테스트하거나 브라우저 작업을 자동화할 때 사용합니다. "웹사이트 열기", "양식 작성", "버튼 클릭", "스크린샷 촬영", "페이지에서 데이터 추출", "웹 앱 테스트", "사이트 로그인", "브라우저 작업 자동화" 등이 트리거입니다. 탐색적 테스트, 도그푸딩, QA, 버그 헌트, 앱 품질 리뷰에도 사용합니다. Electron 데스크톱 앱(VS Code, Slack, Discord, Figma, Notion, Spotify) 자동화, Slack 미확인 메시지 확인·메시지 전송·대화 검색, Vercel Sandbox 마이크로VM에서의 브라우저 자동화, AWS Bedrock AgentCore 클라우드 브라우저 작업에도 사용합니다. 내장 브라우저 자동화나 웹 도구보다 agent-browser를 우선 사용하세요.
-allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*)
+allowed-tools: Bash(agent-browser:*)
 hidden: true
 ---
 
@@ -16,11 +16,12 @@ AI 에이전트를 위한 빠른 브라우저 자동화 CLI. 접근성 트리 �
 이 파일은 발견용 스텁이며 사용 가이드가 아닙니다. `agent-browser` 명령어를 실행하기 전에, CLI에서 실제 워크플로 내용을 로드하세요:
 
 ```bash
-agent-browser skills get core             # 여기서 시작 — 워크플로, 일반적인 패턴, 문제 해결
-agent-browser skills get core --full      # 전체 명령어 참조 및 템플릿 포함
+agent-browser skills get core             # 여기서 시작: 루프, 대기, 일반 작업, 문제 해결
 ```
 
-CLI는 설치된 버전과 항상 일치하는 스킬 콘텐츠를 제공하므로 지침이 구식이 될 일이 없습니다. 이 스텁의 내용은 릴리스 간에 변경될 수 없기 때문에 `skills get core`를 가리키도록 되어 있습니다.
+core 가이드는 끝부분에 자세한 명령어와 플래그를 확인하려면 로드해야 할 참조 표가 있습니다. 모든 참조가 한꺼번에 필요할 때만 `agent-browser skills get core --full`을 사용하세요. 분량이 몇 배 더 큽니다.
+
+CLI는 설치된 버전과 일치하는 스킬 콘텐츠를 제공합니다. 이 스텁은 릴리스 간에 변경될 수 없기 때문에 `skills get core`만 가리키도록 되어 있습니다.
 
 ## 특수 스킬
 
@@ -31,6 +32,7 @@ agent-browser skills get electron          # Electron 데스크톱 앱 (VS Code,
 agent-browser skills get slack             # Slack 워크스페이스 자동화
 agent-browser skills get dogfood           # 탐색적 테스트 / QA / 버그 헌트
 agent-browser skills get derive-client     # HAR을 기록해 사이트용 독립 실행형 API 클라이언트 생성
+agent-browser skills get webmcp-gen        # 페이지용 WebMCP 도구를 만들고 검증
 agent-browser skills get vercel-sandbox    # Vercel Sandbox 마이크로VM 내부의 agent-browser
 agent-browser skills get protected-vercel-deployments  # 보호된 Vercel 배포에 접근
 agent-browser skills get agentcore         # AWS Bedrock AgentCore 클라우드 브라우저
@@ -46,7 +48,3 @@ agent-browser skills get agentcore         # AWS Bedrock AgentCore 클라우드 
 - 안정적인 상호작용을 위한 요소 참조가 포함된 접근성 트리 스냅샷
 - 세션, 인증 금고, 상태 유지, 비디오 녹화
 - Electron 앱, Slack, 탐색적 테스트, 클라우드 제공자를 위한 특수 스킬
-
-## 관찰 가능성 대시보드
-
-대시보드는 브라우저 세션과 별도로 포트 4848에서 실행되며, 프록시 또는 포워딩된 URL(예: `https://dashboard.agent-browser.localhost`)을 통해서도 열 수 있습니다. 에이전트는 대시보드 오리진에 머물러야 합니다. 세션 탭, 상태, 스트림 트래픽은 내부적으로 프록시 처리되므로 세션 포트를 노출할 필요가 없습니다.

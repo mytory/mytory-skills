@@ -55,7 +55,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 
 | 스킬 | 설명 |
 |------|------|
-| [design-taste-frontend](design-taste-frontend/) | 조사 기반 방향·서체·팔레트 추첨과 페이지·앱 UI 품질 검사 (tasteskill v2) |
+| [design-taste-frontend](design-taste-frontend/) | 회사·제품 웹사이트 제작 — 문구·사진·모먼트·효과 키트와 실제 브라우저 검사기·마무리 게이트 (tasteskill 2.5.1) |
 | [frontend-design](frontend-design/) | 새 UI 구축/재구성 시 독특한 시각 디자인 가이드 |
 | [image-to-code](image-to-code/) | 이미지 → 코드 변환 |
 | [codebase-design](codebase-design/) | 코드베이스의 설계 선택지를 비교하고 구체화 |
@@ -144,17 +144,17 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 
 | 출처 | 스킬 |
 |------|------|
-| [mattpocock/skills](https://github.com/mattpocock/skills) (21개, 원본 `49dd158`) | caveman, code-review, codebase-design, diagnosing-bugs, domain-modeling, edit-article, grill-me, grill-with-docs, grilling, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, writing-for-agents, zoom-out. 원본에서 사라진 기존 5개(caveman, edit-article, obsidian-vault, request-refactor-plan, zoom-out)는 이전 번역을 유지 |
-| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (원본 `b9ca2fd`) | design-taste-frontend |
+| [mattpocock/skills](https://github.com/mattpocock/skills) (21개, 원본 `4ae2317`) | caveman, code-review, codebase-design, diagnosing-bugs, domain-modeling, edit-article, grill-me, grill-with-docs, grilling, handoff, improve-codebase-architecture, obsidian-vault, prototype, request-refactor-plan, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, writing-for-agents, zoom-out. 원본에서 사라진 기존 5개(caveman, edit-article, obsidian-vault, request-refactor-plan, zoom-out)는 이전 번역을 유지 |
+| [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (원본 `f6b7657`) | design-taste-frontend |
 | [Leonxlnx/imagegen-skills](https://github.com/Leonxlnx/imagegen-skills) (원본 `beb16b0`) | image-to-code (taste-skill에서 이동, 본문 변경 없음) |
-| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `dac13bb`) | agent-browser |
-| [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | web-design-guidelines |
-| [anthropics/skills](https://github.com/anthropics/skills) (원본 `dbd4588`) | frontend-design |
-| [ctxrs/ctx](https://github.com/ctxrs/ctx) (원본 `56aaf352`) | ctx-agent-history-search (사용 목적에 맞춘 재구성) |
-| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개, 원본 `27def86`) | open-code-review, open-code-review-delegate |
-| [deusyu/translate-book](https://github.com/deusyu/translate-book) (원본 `a663b1b`) | translate-long-text (TXT 처리 등 로컬 확장 유지) |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (원본 `edc992b`) | agent-browser |
+| [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (원본 `1a2c79d`) | web-design-guidelines |
+| [anthropics/skills](https://github.com/anthropics/skills) (원본 `2c5958e`) | frontend-design |
+| [ctxrs/ctx](https://github.com/ctxrs/ctx) (원본 `33ba4645`) | ctx-agent-history-search (사용 목적에 맞춘 재구성) |
+| [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (2개, 원본 `04deca6`) | open-code-review, open-code-review-delegate |
+| [deusyu/translate-book](https://github.com/deusyu/translate-book) (원본 `cf3862d`) | translate-long-text (TXT 처리 등 로컬 확장 유지) |
 
-`image-to-code`의 원본은 `taste-skill`에서 `Leonxlnx/imagegen-skills`로 이동했습니다. `design-taste-frontend`의 현재 원본에는 문서에 언급된 장면 카탈로그·개별 장면·데모가 누락되어 있어 해당 번들 장면 기능은 사용할 수 없습니다. 페이지·앱 방향 추첨은 검증했습니다.
+`image-to-code`의 원본은 `taste-skill`에서 `Leonxlnx/imagegen-skills`로 이동했습니다. `design-taste-frontend`는 원본 2.5.0부터 회사·제품 웹사이트 중심으로 다시 만들어져 v2의 앱 화면(대시보드·관리 화면) 경로와 방향 추첨 스크립트가 빠졌습니다.
 
 ## 🔗 관련 링크
 

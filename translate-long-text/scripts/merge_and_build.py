@@ -141,6 +141,61 @@ def _validate_chunk_images(temp_dir):
     return True
 
 
+# Pandoc footnote labels cannot contain whitespace, ^, [ or ]; this also keeps
+# `[^1^]` pseudo-footnotes from older conversions out of the comparison.
+_FOOTNOTE_LABEL_RE = re.compile(r'\[\^([^\]\s^\[]+)\]')
+
+
+def _scan_footnote_labels(text):
+    """Return (Counter of reference labels, Counter of definition labels)."""
+    refs, defs = Counter(), Counter()
+    for m in _FOOTNOTE_LABEL_RE.finditer(text):
+        line_start = text.rfind('\n', 0, m.start()) + 1
+        indent = text[line_start:m.start()]
+        is_definition = len(indent) <= 3 and not indent.strip() and text.startswith(':', m.end())
+        (defs if is_definition else refs)[m.group(1)] += 1
+    return refs, defs
+
+
+def _validate_chunk_footnotes(temp_dir):
+    """Verify each output_chunk*.md keeps the footnote labels of its chunk*.md.
+
+    A dropped or renumbered `[^N]` / `[^N]:` leaves a dangling reference or an
+    orphaned note in the merged book. Returns False on any divergence and
+    prints every error at once.
+    """
+    temp_path = Path(temp_dir)
+    errors = []
+    for src_chunk in sorted(temp_path.glob('chunk*.md')):
+        out_chunk = temp_path / f'output_{src_chunk.name}'
+        if not out_chunk.exists():
+            continue
+        src_text = read_output_text(src_chunk)
+        out_text = read_output_text(out_chunk)
+        if src_text is None or out_text is None:
+            continue  # unreadable files are the manifest validator's job
+        src_refs, src_defs = _scan_footnote_labels(src_text)
+        out_refs, out_defs = _scan_footnote_labels(out_text)
+        if src_refs != out_refs or src_defs != out_defs:
+            errors.append(
+                f"ERROR: {out_chunk.name} footnote markers diverge from {src_chunk.name}\n"
+                f"  missing references [^N] (count): {sorted((src_refs - out_refs).items()) or 'none'}\n"
+                f"  extra   references [^N] (count): {sorted((out_refs - src_refs).items()) or 'none'}\n"
+                f"  missing definitions [^N]: (count): {sorted((src_defs - out_defs).items()) or 'none'}\n"
+                f"  extra   definitions [^N]: (count): {sorted((out_defs - src_defs).items()) or 'none'}\n"
+                f"  fix: in {out_chunk.name}, restore every footnote marker exactly as in {src_chunk.name}; "
+                f"translate only the note text"
+            )
+
+    if errors:
+        print("\n=== Footnote validation failed ===")
+        for e in errors:
+            print(e)
+            print()
+        return False
+    return True
+
+
 def _check_generated_html_sanity(html_path):
     """Sanity-check generated HTML for malformed <img> tags. Returns False on problems.
 
@@ -289,10 +344,12 @@ def merge_markdown_files(temp_dir):
     # Always validate manifest, even if output.md exists (catch stale/corrupt outputs)
     ok, ordered_files, warnings = validate_for_merge(temp_dir)
 
-    # Image structure validation runs unconditionally — bad chunks invalidate any cached output.md
-    if not _validate_chunk_images(temp_dir):
+    # Image and footnote validation run unconditionally — bad chunks invalidate any cached output.md
+    images_ok = _validate_chunk_images(temp_dir)
+    footnotes_ok = _validate_chunk_footnotes(temp_dir)
+    if not (images_ok and footnotes_ok):
         if os.path.exists(output_md):
-            print("Removing stale output.md (built from chunks that failed image validation)")
+            print("Removing stale output.md (built from chunks that failed validation)")
             os.remove(output_md)
         return False
 
@@ -456,7 +513,7 @@ def convert_with_python_markdown(md_file, html_file, title):
         with open(md_file, 'r', encoding='utf-8') as f:
             md_content = f.read()
 
-        extensions = ['toc', 'tables', 'fenced_code', 'codehilite', 'nl2br']
+        extensions = ['toc', 'tables', 'fenced_code', 'codehilite', 'nl2br', 'footnotes']
         md = markdown.Markdown(extensions=extensions)
         html_content = md.convert(md_content)
 
@@ -989,7 +1046,12 @@ def _validate_export_name(name):
         raise ValueError("--export-name must not be empty")
     if '\x00' in name or '/' in name or '\\' in name:
         raise ValueError("--export-name must be a filename stem, not a path")
-    return name.strip()
+    stem = name.strip()
+    # This stem maps the web HTML alias onto the canonical ebook HTML.
+    # Check case-insensitively so the same names are safe on macOS/Windows.
+    if stem.casefold() == "book_doc":
+        raise ValueError("--export-name would overwrite reserved output book_doc.html; choose another name")
+    return stem
 
 
 def export_named_aliases(temp_dir, export_name):
@@ -1013,7 +1075,7 @@ def export_named_aliases(temp_dir, export_name):
         if not os.path.exists(src):
             continue
         dst = os.path.join(temp_dir, dst_name)
-        if os.path.abspath(src) == os.path.abspath(dst):
+        if os.path.exists(dst) and os.path.samefile(src, dst):
             continue
         shutil.copy2(src, dst)
         copied.append(dst_name)
