@@ -32,7 +32,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 
 스킬 폴더의 스크립트와 참고 자료도 함께 설치됩니다. 스킬에서 사용하는 외부 도구와 API 인증은 각 `SKILL.md`의 안내에 따라 별도로 준비해야 합니다.
 
-## 📂 스킬 목록 (총 37개)
+## 📂 스킬 목록 (총 38개)
 
 <details>
 <summary><strong>🛠️ 개발 워크플로우</strong></summary>
@@ -46,6 +46,7 @@ npx skills add mytory/mytory-skills --skill diagnosing-bugs -a codex -g
 | [tdd](tdd/) | Red-Green-Refactor 루프를 통한 테스트 주도 개발 |
 | [prototype](prototype/) | 디자인 커밋 전 구체화를 위한 일회용 프로토타입 |
 | [laravel-admin-account](laravel-admin-account/) | Laravel 앱에 로그인 가능한 관리자·역할 계정을 만들고 실제 로그인 확인 후 되돌리기 (자작) |
+| [dsh-subagent](dsh-subagent/) | DeepSeek Harness(dsh)를 저비용 서브에이전트로 돌려 메인 에이전트 토큰 절약 — 명세 작성, 백그라운드 실행, 결과 직접 확인 (자작) |
 
 </details>
 
