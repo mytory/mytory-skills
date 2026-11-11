@@ -28,19 +28,18 @@
   * { box-sizing:border-box; }
   html { font-size:19px; }
   body { margin:0; background:var(--paper); color:var(--ink); font:400 1rem/1.7 var(--font); font-variant-numeric:tabular-nums; word-break:keep-all; overflow-wrap:anywhere; }
-  main { max-width:1200px; margin:0 auto; padding:56px 28px 96px; }
+  main { max-width:756px; margin:0 auto; /* 본문 폭 700px + 좌우 여백 */ padding:56px 28px 96px; }
   a { color:var(--accent); text-underline-offset:3px; }
   h1 { margin:0; font-size:1.9rem; line-height:1.25; font-weight:800; letter-spacing:-.02em; }
   h2 { margin:64px 0 6px; font-size:1.35rem; line-height:1.35; font-weight:700; letter-spacing:-.01em; }
   h3 { margin:32px 0 8px; font-size:1.15rem; font-weight:700; }
   h2 + .lead { margin-top:0; }
-  p, li { max-width:46em; }
   .lead { color:var(--muted); }
   code { background:var(--soft); padding:1px 6px; border-radius:4px; font:.9em var(--mono); }
   ul, ol { padding-left:1.3em; } li { margin:4px 0; }
 
   /* 머리말: 제목과 위험도 꼬리표 */
-  .masthead { display:grid; grid-template-columns:1fr auto; gap:32px; align-items:start; padding-bottom:28px; border-bottom:2px solid var(--ink); }
+  .masthead { display:grid; gap:24px; justify-items:start; padding-bottom:28px; border-bottom:2px solid var(--ink); }
   .meta { display:grid; grid-template-columns:auto 1fr; gap:2px 16px; margin:20px 0 0; }
   .meta dt { color:var(--muted); } .meta dd { margin:0; }
   .present { margin:16px 0 0; font-weight:600; }
@@ -100,7 +99,6 @@
   @media (max-width: 720px) {
     html { font-size:17px; }
     main { padding:32px 16px 64px; }
-    .masthead { grid-template-columns:1fr; }
     table { display:block; overflow-x:auto; table-layout:auto; }
     td, th { min-width:7em; }
   }
@@ -233,7 +231,7 @@
 <details>
 <summary>회차별 결과 {{N}}회</summary>
 <table>
-<tr><th style="width:4em">회차</th><th style="width:24%">검수자 — 대상</th><th style="width:18%">지적</th><th>조치</th></tr>
+<tr><th style="width:3.6em">회차</th><th style="width:30%">검수자 — 대상</th><th style="width:22%">지적</th><th>조치</th></tr>
 <tr><td>1</td><td>{{예) Opus 서브 에이전트 / ocr}} — {{코드 · 보고서 · 테스트}}</td><td>{{건수(심각도별)}}</td><td>{{무엇을 고쳤는지, 고치지 않은 것과 이유}}</td></tr>
 </table>
 <p>원문: <a href="reviews/">reviews/</a></p>
@@ -252,7 +250,7 @@
 <summary>테스트 코드 변경 {{N}}개 파일, {{M}}개 메서드</summary>
 <!-- 새로 만들거나 수정한 테스트 파일마다 th.group 줄 하나, 그 아래 메서드(케이스)별로 한 줄씩. 변경이 없다면 details 대신 <p>테스트 코드 변경 없음</p>. -->
 <table>
-<tr><th style="width:30%">메서드·케이스</th><th>변경 내용</th><th>검증하는 동작</th></tr>
+<tr><th style="width:38%">메서드·케이스</th><th>변경 내용</th><th>검증하는 동작</th></tr>
 <tr><th colspan="3" class="group"><code>{{테스트 파일 경로}}</code></th></tr>
 <tr><td><code>{{테스트 메서드·케이스 이름}}</code></td><td>{{추가·수정·삭제한 내용}}</td><td>{{검증하는 동작}}</td></tr>
 </table>
