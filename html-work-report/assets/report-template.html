@@ -26,34 +26,36 @@
     }
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--paper); color:var(--ink); font:400 18px/1.7 var(--font); font-variant-numeric:tabular-nums; word-break:keep-all; overflow-wrap:anywhere; }
-  main { max-width:1080px; margin:0 auto; padding:56px 28px 96px; }
+  html { font-size:19px; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:400 1rem/1.7 var(--font); font-variant-numeric:tabular-nums; word-break:keep-all; overflow-wrap:anywhere; }
+  main { max-width:1200px; margin:0 auto; padding:56px 28px 96px; }
   a { color:var(--accent); text-underline-offset:3px; }
-  h1 { margin:0; font-size:2.1rem; line-height:1.25; font-weight:800; letter-spacing:-.02em; }
-  h2 { margin:64px 0 6px; font-size:1.4rem; line-height:1.35; font-weight:700; letter-spacing:-.01em; }
-  h3 { margin:32px 0 8px; font-size:1.1rem; font-weight:700; }
+  h1 { margin:0; font-size:1.9rem; line-height:1.25; font-weight:800; letter-spacing:-.02em; }
+  h2 { margin:64px 0 6px; font-size:1.35rem; line-height:1.35; font-weight:700; letter-spacing:-.01em; }
+  h3 { margin:32px 0 8px; font-size:1.15rem; font-weight:700; }
   h2 + .lead { margin-top:0; }
   p, li { max-width:46em; }
   .lead { color:var(--muted); }
-  code { background:var(--soft); padding:1px 6px; border-radius:4px; font:.86em var(--mono); }
+  code { background:var(--soft); padding:1px 6px; border-radius:4px; font:.9em var(--mono); }
   ul, ol { padding-left:1.3em; } li { margin:4px 0; }
 
   /* 머리말: 제목과 위험도 꼬리표 */
   .masthead { display:grid; grid-template-columns:1fr auto; gap:32px; align-items:start; padding-bottom:28px; border-bottom:2px solid var(--ink); }
-  .meta { display:grid; grid-template-columns:auto 1fr; gap:2px 16px; margin:20px 0 0; font-size:.9rem; }
+  .meta { display:grid; grid-template-columns:auto 1fr; gap:2px 16px; margin:20px 0 0; }
   .meta dt { color:var(--muted); } .meta dd { margin:0; }
   .present { margin:16px 0 0; font-weight:600; }
   .risk { --risk:var(--muted); position:relative; min-width:11em; padding:16px 22px 18px 44px; border:2px solid var(--risk); border-radius:6px 18px 18px 6px; background:var(--sheet); }
   .risk::before { content:""; position:absolute; left:15px; top:24px; width:12px; height:12px; border:2px solid var(--risk); border-radius:50%; background:var(--paper); }
   .risk-low { --risk:var(--ok); } .risk-mid { --risk:var(--warn); } .risk-high { --risk:var(--bad); }
-  .risk-label { margin:0; color:var(--muted); font-size:.85rem; }
-  .risk-level { margin:0; color:var(--risk); font-size:2.4rem; line-height:1.1; font-weight:800; letter-spacing:-.03em; }
-  .risk-action { margin:6px 0 0; font-size:.9rem; font-weight:600; }
+  .risk-label { margin:0; color:var(--muted); font-size:.92rem; }
+  .risk-level { margin:0; color:var(--risk); font-size:2.2rem; line-height:1.1; font-weight:800; letter-spacing:-.03em; }
+  .risk-action { margin:6px 0 0; font-weight:600; }
 
   /* 표: 가로줄만. 판정 색은 완료 기준 표의 왼쪽 띠와 글자색으로만 */
-  table { width:100%; table-layout:fixed; border-collapse:collapse; margin:12px 0 20px; font-size:.94rem; }
-  th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; overflow-wrap:break-word; word-break:keep-all; }
-  th { color:var(--muted); font-weight:600; font-size:.88rem; border-bottom:1px solid var(--ink); }
+  table { width:100%; table-layout:fixed; border-collapse:collapse; margin:12px 0 20px; }
+  th, td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; overflow-wrap:break-word; word-break:keep-all; }
+  th { color:var(--muted); font-weight:600; font-size:.92rem; border-bottom:1px solid var(--ink); }
+  th.group { padding-top:20px; color:var(--ink); font-size:1rem; border-bottom:1px solid var(--line); }
   .ok { color:var(--ok); font-weight:700; } .warn { color:var(--warn); font-weight:700; } .bad { color:var(--bad); font-weight:700; }
   .ledger td:first-child { box-shadow:inset 4px 0 var(--line); padding-left:18px; }
   .ledger tr:has(td.ok) td:first-child { box-shadow:inset 4px 0 var(--ok); }
@@ -71,7 +73,7 @@
   /* 스크린샷 */
   figure { margin:16px 0 24px; }
   main figure img { display:block; width:100%; height:auto; aspect-ratio:16/10; object-fit:contain; background:var(--soft); border:1px solid var(--line); border-radius:6px; }
-  figcaption { margin-top:6px; color:var(--muted); font-size:.88rem; }
+  figcaption { margin-top:6px; color:var(--muted); font-size:.95rem; }
   .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:20px; }
 
   /* 접어 둔 본문: 절 제목과 결론은 밖에, 본문만 접는다 */
@@ -93,10 +95,10 @@
   .image-viewer-controls { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
   .image-viewer button { padding:6px 14px; border:1px solid var(--line); border-radius:6px; background:var(--soft); color:var(--ink); font:inherit; cursor:pointer; }
   .image-viewer button:disabled { opacity:.4; cursor:default; }
-  .image-viewer-caption { margin:8px 0 0; color:var(--muted); font-size:.88rem; }
+  .image-viewer-caption { margin:8px 0 0; color:var(--muted); font-size:.95rem; }
 
   @media (max-width: 720px) {
-    body { font-size:16px; }
+    html { font-size:17px; }
     main { padding:32px 16px 64px; }
     .masthead { grid-template-columns:1fr; }
     table { display:block; overflow-x:auto; table-layout:auto; }
@@ -154,7 +156,7 @@
 <section id="criteria">
 <h2>완료 기준과 증거</h2>
 <table class="ledger">
-<tr><th style="width:34%">완료 기준</th><th style="width:16%">증거 종류</th><th>증거</th><th style="width:12%">판정</th></tr>
+<tr><th style="width:32%">완료 기준</th><th style="width:18%">증거 종류</th><th>증거</th><th style="width:12%">판정</th></tr>
 <tr><td>{{완료 기준}}</td><td>{{작동 영상 / 실행 기록 / 측정값 / 응답 JSON}}</td><td>{{<a href="evidence/01-test.log">evidence/01-test.log</a> — 한 줄 요지}}</td><td class="ok">통과</td></tr>
 <tr><td>남은 외부 작업</td><td>—</td><td>{{커밋·푸시, 이슈 코멘트, 전달 — 사용자 승인 필요}}</td><td class="warn">대기</td></tr>
 </table>
@@ -168,7 +170,7 @@
 <p class="lead">{{전후 비교: 무엇과 무엇을 같은 조작으로 비교했는지 / 작동 시연: 어떤 흐름을 보여 주는지. 캡션·음성 설명 유무.}} <code>videos/{{final-narrated.mp4}}</code></p>
 <div class="video-frame"><video id="report-video" controls preload="metadata" src="videos/{{final-narrated.mp4}}"></video></div>
 <table class="chapters">
-<tr><th style="width:3em">구간</th><th>내용</th><th>시작</th></tr>
+<tr><th style="width:4.5em">구간</th><th>내용</th><th>시작</th></tr>
 <tr><td>1</td><td><button type="button" class="video-seek" data-video-target="report-video" data-video-seek="0">{{보여 주는 것 — 무엇을 측정·판정했는지까지}}</button></td><td><button type="button" class="video-seek" data-video-target="report-video" data-video-seek="0">0:00</button></td></tr>
 </table>
 </section>
@@ -179,6 +181,16 @@
 <table>
 <tr><th style="width:3em">#</th><th style="width:36%">요청</th><th>처리와 확인 방법</th></tr>
 <tr><td>1</td><td>{{요청 원문 요지}}</td><td>{{무엇을 어떻게 바꿨는지 + 확인 방법/증거 파일}}</td></tr>
+</table>
+</section>
+
+<!-- 설계 결정: 사용자·검수 AI와 갈린 쟁점만. 누가 정했는지 적는다. 구현 내용보다 먼저 읽게 접지 않는다. -->
+<section id="decisions">
+<h2>설계 결정</h2>
+<p class="lead">{{N}}건 — {{사용자 결정 X건, 내 판단 Y건, 검수 AI 권장과 다르게 간 것 Z건}}</p>
+<table>
+<tr><th style="width:28%">쟁점</th><th>결정</th><th style="width:32%">이유</th></tr>
+<tr><td>{{쟁점}}</td><td>{{결정 (사용자 결정 / 내 판단)}}</td><td>{{이유}}</td></tr>
 </table>
 </section>
 
@@ -214,18 +226,6 @@
 </ol>
 </section>
 
-<!-- 설계 결정: 사용자·검수 AI와 갈린 쟁점만. 누가 정했는지 적는다. -->
-<section id="decisions">
-<h2>설계 결정</h2>
-<details>
-<summary>{{N}}건 — {{사용자 결정 X건, 내 판단 Y건, 검수 AI 권장과 다르게 간 것 Z건}}</summary>
-<table>
-<tr><th style="width:28%">쟁점</th><th>결정</th><th style="width:32%">이유</th></tr>
-<tr><td>{{쟁점}}</td><td>{{결정 (사용자 결정 / 내 판단)}}</td><td>{{이유}}</td></tr>
-</table>
-</details>
-</section>
-
 <!-- AI 검수: 코드를 쓰지 않은 검수 전용 AI의 회차별 결과. 원문은 reviews/에 두고 링크만. 고치지 않은 지적이 있으면 결론 줄에 드러낸다. -->
 <section id="reviews">
 <h2>AI 검수</h2>
@@ -233,8 +233,8 @@
 <details>
 <summary>회차별 결과 {{N}}회</summary>
 <table>
-<tr><th style="width:4em">회차</th><th>검수자(모델·도구)</th><th>대상</th><th>지적</th><th>조치</th></tr>
-<tr><td>1</td><td>{{예) Opus 서브 에이전트 / ocr}}</td><td>{{코드 · 보고서 · 테스트}}</td><td>{{건수(심각도별)}}</td><td>{{무엇을 고쳤는지, 고치지 않은 것과 이유}}</td></tr>
+<tr><th style="width:4em">회차</th><th style="width:24%">검수자 — 대상</th><th style="width:18%">지적</th><th>조치</th></tr>
+<tr><td>1</td><td>{{예) Opus 서브 에이전트 / ocr}} — {{코드 · 보고서 · 테스트}}</td><td>{{건수(심각도별)}}</td><td>{{무엇을 고쳤는지, 고치지 않은 것과 이유}}</td></tr>
 </table>
 <p>원문: <a href="reviews/">reviews/</a></p>
 </details>
@@ -250,10 +250,11 @@
 </ul>
 <details>
 <summary>테스트 코드 변경 {{N}}개 파일, {{M}}개 메서드</summary>
-<!-- 새로 만들거나 수정한 테스트의 파일·메서드(케이스)별로 한 줄씩. 변경이 없다면 details 대신 <p>테스트 코드 변경 없음</p>. -->
+<!-- 새로 만들거나 수정한 테스트 파일마다 th.group 줄 하나, 그 아래 메서드(케이스)별로 한 줄씩. 변경이 없다면 details 대신 <p>테스트 코드 변경 없음</p>. -->
 <table>
-<tr><th>테스트 파일</th><th>메서드·케이스</th><th>변경 내용</th><th>검증하는 동작</th></tr>
-<tr><td><code>{{테스트 파일 경로}}</code></td><td><code>{{테스트 메서드·케이스 이름}}</code></td><td>{{추가·수정·삭제한 내용}}</td><td>{{검증하는 동작}}</td></tr>
+<tr><th style="width:30%">메서드·케이스</th><th>변경 내용</th><th>검증하는 동작</th></tr>
+<tr><th colspan="3" class="group"><code>{{테스트 파일 경로}}</code></th></tr>
+<tr><td><code>{{테스트 메서드·케이스 이름}}</code></td><td>{{추가·수정·삭제한 내용}}</td><td>{{검증하는 동작}}</td></tr>
 </table>
 </details>
 </section>
