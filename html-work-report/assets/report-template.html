@@ -50,22 +50,26 @@
   .risk-level { margin:0; color:var(--risk); font-size:2.2rem; line-height:1.1; font-weight:800; letter-spacing:-.03em; }
   .risk-action { margin:6px 0 0; font-weight:600; }
 
-  /* 표: 가로줄만. 판정 색은 완료 기준 표의 왼쪽 띠와 글자색으로만 */
-  table { width:100%; table-layout:fixed; border-collapse:collapse; margin:12px 0 20px; }
-  th, td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; overflow-wrap:break-word; word-break:keep-all; }
-  th { color:var(--muted); font-weight:600; font-size:.92rem; border-bottom:1px solid var(--ink); }
-  th.group { padding-top:20px; color:var(--ink); font-size:1rem; border-bottom:1px solid var(--line); }
+  /* 항목 목록: 표 대신. 항목마다 제목 줄과 label이 붙은 줄. 판정 색은 완료 기준 목록의 왼쪽 띠와 글자색으로만 */
+  .entries { list-style:none; margin:12px 0 20px; padding:0; border-top:1px solid var(--ink); }
+  .entries > li { margin:0; padding:14px 4px; border-bottom:1px solid var(--line); }
+  .entries > li > p { margin:0; } .entries > li > p + p { margin-top:4px; }
+  .entry-title { font-weight:700; }
+  .entry-group { margin:20px 0 0; font-weight:700; }
+  .entries > li > p:has(> .label:first-child) { padding-left:5rem; text-indent:-5rem; } /* 줄바꿈된 내용이 label 밑으로 들어가지 않게 */
+  .label { display:inline-block; width:4.5rem; margin-right:.5rem; text-indent:0; color:var(--muted); font-size:.92rem; }
   .ok { color:var(--ok); font-weight:700; } .warn { color:var(--warn); font-weight:700; } .bad { color:var(--bad); font-weight:700; }
-  .ledger td:first-child { box-shadow:inset 4px 0 var(--line); padding-left:18px; }
-  .ledger tr:has(td.ok) td:first-child { box-shadow:inset 4px 0 var(--ok); }
-  .ledger tr:has(td.warn) td:first-child { box-shadow:inset 4px 0 var(--warn); }
-  .ledger tr:has(td.bad) td:first-child { box-shadow:inset 4px 0 var(--bad); }
-  .ledger tr:has(td.warn) { background:var(--warn-soft); } .ledger tr:has(td.bad) { background:var(--bad-soft); }
+  .verdict { margin-right:.5em; }
+  .ledger > li { padding-left:18px; box-shadow:inset 4px 0 var(--line); }
+  .ledger > li:has(.ok) { box-shadow:inset 4px 0 var(--ok); }
+  .ledger > li:has(.warn) { box-shadow:inset 4px 0 var(--warn); background:var(--warn-soft); }
+  .ledger > li:has(.bad) { box-shadow:inset 4px 0 var(--bad); background:var(--bad-soft); }
 
   /* 영상 */
   video { display:block; width:100%; border-radius:6px; background:#000; }
   .video-frame { margin:16px 0 8px; padding:10px; border-radius:10px; background:#1b2433; }
-  .chapters td:last-child, .chapters th:last-child { text-align:right; width:6em; }
+  .chapters > li { display:flex; gap:1em; }
+  .chapters .video-seek:first-child { flex:none; min-width:3.2em; }
   .video-seek { padding:0; border:0; background:none; color:var(--accent); font:inherit; text-align:left; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
   .video-seek:focus-visible { outline:3px solid var(--accent); outline-offset:3px; border-radius:2px; }
 
@@ -99,8 +103,6 @@
   @media (max-width: 720px) {
     html { font-size:17px; }
     main { padding:32px 16px 64px; }
-    table { display:block; overflow-x:auto; table-layout:auto; }
-    td, th { min-width:7em; }
   }
 </style>
 </head>
@@ -139,25 +141,23 @@
 </ul>
 </section>
 
-<!-- 검토 안내: 검토자가 이 절과 완료 기준 표만 보고 다음 행동을 정할 수 있어야 한다. 접지 않는다. -->
+<!-- 검토 안내: 검토자가 이 절과 완료 기준만 보고 다음 행동을 정할 수 있어야 한다. 접지 않는다. -->
 <section id="review-guide">
 <h2>검토 안내</h2>
 <p class="lead">{{위험도를 그렇게 정한 이유 한두 문장. 예) 권한 검사 코드를 공용 필터로 옮겨 모든 관리 화면에 영향이 있다.}}</p>
-<table>
-<tr><th style="width:36%">확인할 위치</th><th>직접 봐야 하는 이유</th></tr>
-<tr><td><code>{{src/path/File.java:120}}</code></td><td>{{예) 예외 시 권한 없음으로 처리하는 분기, 테스트로 다 못 덮음}}</td></tr>
-</table>
+<ul class="entries">
+<li><p><code>{{src/path/File.java:120}}</code></p><p>{{직접 봐야 하는 이유. 예) 예외 시 권한 없음으로 처리하는 분기, 테스트로 다 못 덮음}}</p></li>
+</ul>
 </section>
 
-<!-- 완료 기준과 증거: 기준마다 한 줄. 판정 칸은 class="ok|warn|bad". 증거는 파일 링크나 영상 구간.
-     남은 외부 작업(커밋·푸시·이슈 코멘트·전달)은 warn으로 마지막 줄에. -->
+<!-- 완료 기준과 증거: 기준마다 항목 하나. 판정은 span.verdict에 class="ok|warn|bad". 증거는 파일 링크나 영상 구간.
+     남은 외부 작업(커밋·푸시·이슈 코멘트·전달)은 warn으로 마지막 항목에. -->
 <section id="criteria">
 <h2>완료 기준과 증거</h2>
-<table class="ledger">
-<tr><th style="width:32%">완료 기준</th><th style="width:18%">증거 종류</th><th>증거</th><th style="width:12%">판정</th></tr>
-<tr><td>{{완료 기준}}</td><td>{{작동 영상 / 실행 기록 / 측정값 / 응답 JSON}}</td><td>{{<a href="evidence/01-test.log">evidence/01-test.log</a> — 한 줄 요지}}</td><td class="ok">통과</td></tr>
-<tr><td>남은 외부 작업</td><td>—</td><td>{{커밋·푸시, 이슈 코멘트, 전달 — 사용자 승인 필요}}</td><td class="warn">대기</td></tr>
-</table>
+<ul class="entries ledger">
+<li><p class="entry-title"><span class="verdict ok">통과</span>{{완료 기준}}</p><p><span class="label">{{실행 기록 / 작동 영상 / 측정값 / 응답 JSON}}</span><a href="evidence/01-test.log">{{evidence/01-test.log}}</a> — {{한 줄 요지}}</p></li>
+<li><p class="entry-title"><span class="verdict warn">대기</span>남은 외부 작업</p><p>{{커밋·푸시, 이슈 코멘트, 전달 — 사용자 승인 필요}}</p></li>
+</ul>
 </section>
 
 <!-- 영상: browser-repro-video 스킬로 찍은 전후 비교 또는 작동 시연 mp4. 영상을 고르지 않았으면 절 삭제. 상대 경로.
@@ -167,29 +167,26 @@
 <h2>영상</h2>
 <p class="lead">{{전후 비교: 무엇과 무엇을 같은 조작으로 비교했는지 / 작동 시연: 어떤 흐름을 보여 주는지. 캡션·음성 설명 유무.}} <code>videos/{{final-narrated.mp4}}</code></p>
 <div class="video-frame"><video id="report-video" controls preload="metadata" src="videos/{{final-narrated.mp4}}"></video></div>
-<table class="chapters">
-<tr><th style="width:4.5em">구간</th><th>내용</th><th>시작</th></tr>
-<tr><td>1</td><td><button type="button" class="video-seek" data-video-target="report-video" data-video-seek="0">{{보여 주는 것 — 무엇을 측정·판정했는지까지}}</button></td><td><button type="button" class="video-seek" data-video-target="report-video" data-video-seek="0">0:00</button></td></tr>
-</table>
+<ol class="entries chapters">
+<li><button type="button" class="video-seek" data-video-target="report-video" data-video-seek="0">0:00</button><button type="button" class="video-seek" data-video-target="report-video" data-video-seek="0">{{보여 주는 것 — 무엇을 측정·판정했는지까지}}</button></li>
+</ol>
 </section>
 
 <!-- 요청 반영: 요청이 여러 건이거나 재보고일 때. 번호는 사용자가 준 순서 그대로. -->
 <section id="requests">
 <h2>요청 반영</h2>
-<table>
-<tr><th style="width:3em">#</th><th style="width:36%">요청</th><th>처리와 확인 방법</th></tr>
-<tr><td>1</td><td>{{요청 원문 요지}}</td><td>{{무엇을 어떻게 바꿨는지 + 확인 방법/증거 파일}}</td></tr>
-</table>
+<ol class="entries">
+<li><p class="entry-title">1. {{요청 원문 요지}}</p><p>{{무엇을 어떻게 바꿨는지 + 확인 방법/증거 파일}}</p></li>
+</ol>
 </section>
 
 <!-- 설계 결정: 사용자·검수 AI와 갈린 쟁점만. 누가 정했는지 적는다. 구현 내용보다 먼저 읽게 접지 않는다. -->
 <section id="decisions">
 <h2>설계 결정</h2>
 <p class="lead">{{N}}건 — {{사용자 결정 X건, 내 판단 Y건, 검수 AI 권장과 다르게 간 것 Z건}}</p>
-<table>
-<tr><th style="width:28%">쟁점</th><th>결정</th><th style="width:32%">이유</th></tr>
-<tr><td>{{쟁점}}</td><td>{{결정 (사용자 결정 / 내 판단)}}</td><td>{{이유}}</td></tr>
-</table>
+<ul class="entries">
+<li><p class="entry-title">{{쟁점}}</p><p><span class="label">결정</span>{{결정}} — {{사용자 결정 / 내 판단}}</p><p><span class="label">이유</span>{{이유}}</p></li>
+</ul>
 </section>
 
 <!-- 구현 내용: 기능마다 h3. 입력→주요 처리→결과와 그 방식을 택한 이유를 2~4문장. 핵심 스크린샷만 보이게 두고 보조 스크린샷은 접는다. -->
@@ -210,10 +207,9 @@
 
 <!-- 전/후 비교는 형용사 말고 측정값으로. 값은 증거 파일(evidence/)에서 가져온다. -->
 <h3>수정 전후 측정값</h3>
-<table>
-<tr><th>지표</th><th>수정 전</th><th>수정 후</th><th>증거</th></tr>
-<tr><td>{{지표}}</td><td>{{값}}</td><td>{{값}}</td><td><a href="evidence/{{파일}}">{{파일}}</a></td></tr>
-</table>
+<ul class="entries">
+<li><p class="entry-title">{{지표}}</p><p>{{수정 전 값}} → {{수정 후 값}} — <a href="evidence/{{파일}}">{{파일}}</a></p></li>
+</ul>
 </section>
 
 <!-- DB·외부 영향: 마이그레이션, 다른 팀에 전달할 것. 없으면 절 삭제. 접지 않는다. -->
@@ -230,10 +226,9 @@
 <p class="lead">{{결론 한 줄. 예) 검수 AI 2종으로 3회, 마지막 회차 지적 0건.}}</p>
 <details>
 <summary>회차별 결과 {{N}}회</summary>
-<table>
-<tr><th style="width:3.6em">회차</th><th style="width:30%">검수자 — 대상</th><th style="width:22%">지적</th><th>조치</th></tr>
-<tr><td>1</td><td>{{예) Opus 서브 에이전트 / ocr}} — {{코드 · 보고서 · 테스트}}</td><td>{{건수(심각도별)}}</td><td>{{무엇을 고쳤는지, 고치지 않은 것과 이유}}</td></tr>
-</table>
+<ol class="entries">
+<li><p class="entry-title">1회차 — {{예) Opus 서브 에이전트 / ocr}} · {{코드 · 보고서 · 테스트}}</p><p><span class="label">지적</span>{{건수(심각도별)}}</p><p><span class="label">조치</span>{{무엇을 고쳤는지, 고치지 않은 것과 이유}}</p></li>
+</ol>
 <p>원문: <a href="reviews/">reviews/</a></p>
 </details>
 </section>
@@ -248,12 +243,11 @@
 </ul>
 <details>
 <summary>테스트 코드 변경 {{N}}개 파일, {{M}}개 메서드</summary>
-<!-- 새로 만들거나 수정한 테스트 파일마다 th.group 줄 하나, 그 아래 메서드(케이스)별로 한 줄씩. 변경이 없다면 details 대신 <p>테스트 코드 변경 없음</p>. -->
-<table>
-<tr><th style="width:38%">메서드·케이스</th><th>변경 내용</th><th>검증하는 동작</th></tr>
-<tr><th colspan="3" class="group"><code>{{테스트 파일 경로}}</code></th></tr>
-<tr><td><code>{{테스트 메서드·케이스 이름}}</code></td><td>{{추가·수정·삭제한 내용}}</td><td>{{검증하는 동작}}</td></tr>
-</table>
+<!-- 새로 만들거나 수정한 테스트 파일마다 p.entry-group 하나와 목록 하나, 메서드(케이스)마다 항목 하나. 변경이 없다면 details 대신 <p>테스트 코드 변경 없음</p>. -->
+<p class="entry-group"><code>{{테스트 파일 경로}}</code></p>
+<ul class="entries">
+<li><p class="entry-title"><code>{{테스트 메서드·케이스 이름}}</code></p><p><span class="label">{{추가 / 수정 / 삭제}}</span>{{바꾼 내용}}</p><p><span class="label">검증</span>{{검증하는 동작}}</p></li>
+</ul>
 </details>
 </section>
 
