@@ -29,6 +29,8 @@ ffmpeg -version | head -1; ffprobe -version | head -1
 npm ls playwright-core || npm i playwright-core   # 작업 폴더(스크래치패드)에 설치. channel: 'chrome'이라 브라우저 다운로드는 필요 없다
 ```
 
+`/opt/google/chrome/chrome`이 없는 머신(sudo 없음 등)에서는 환경 변수 `CHROME_PATH`에 Chrome 실행 파일 경로를 주면 `rec-lib.mjs`와 html-work-report의 `check-report.mjs`가 `channel: 'chrome'` 대신 그 파일을 쓴다.
+
 `rec-lib.mjs`는 `playwright-core`를 import하므로 **복사해 쓰는 작업 폴더에 node_modules가 있어야** 한다.
 
 ## 절차

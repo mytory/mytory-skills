@@ -65,7 +65,7 @@ export async function openRecording({videoDir, width, height, displayWidth = 121
     const even = n => Math.ceil(n / 2) * 2;
     width ??= overlay ? 1920 : 1440;
     height ??= overlay ? 1080 : 1080;
-    const browser = await chromium.launch({channel: 'chrome', headless: true});
+    const browser = await chromium.launch({...(process.env.CHROME_PATH ? {executablePath: process.env.CHROME_PATH} : {channel: 'chrome'}), headless: true});
     const context = await browser.newContext({
         viewport: {width, height},
         recordVideo: {dir: videoDir, size: {width, height}},

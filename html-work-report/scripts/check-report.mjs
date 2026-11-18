@@ -2,7 +2,7 @@
 // 보고서 HTML을 실제 브라우저로 열어 이미지·영상이 로드되는지, 상대 링크·src가 가리키는 파일이 있는지,
 // 템플릿 자리표시자({{ }})가 남지 않았는지, warn/bad 판정이 접힌 <details> 안에 숨지 않았는지,
 // 요구사항 요약(#requirements)이 5줄 이내로 있는지 검사한다.
-// 사용: node check-report.mjs <report.html>   (playwright-core가 설치된 폴더에서. channel: 'chrome')
+// 사용: node check-report.mjs <report.html>   (playwright-core가 설치된 폴더에서. channel: 'chrome', CHROME_PATH가 있으면 그 실행 파일)
 // 통과 0 / 위 항목 중 하나라도 걸리면 1
 import {chromium} from 'playwright-core';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import {pathToFileURL} from 'node:url';
 
 const file = process.argv[2];
 if (!file) { console.error('사용: node check-report.mjs <report.html>'); process.exit(2); }
-const browser = await chromium.launch({channel: 'chrome'});
+const browser = await chromium.launch(process.env.CHROME_PATH ? {executablePath: process.env.CHROME_PATH} : {channel: 'chrome'});
 const page = await browser.newPage({viewport: {width: 1280, height: 900}});
 await page.goto(pathToFileURL(path.resolve(file)).href, {waitUntil: 'load'});
 await page.waitForTimeout(1500);
