@@ -85,16 +85,7 @@ reports/2026-10-04 issue-470 후속/
    - 프레젠테이션 영상: `browser-repro-video`의 `present-report.mjs`로 보고서를 절별로 스크롤하며 녹화하고 내레이션을 입힌다. 장면 선택자는 위 순서대로 `#requirements` → `#review-guide` → `#criteria` → 영상·핵심 구현 → `#risks`. 저장 폴더는 `videos/`, 결과는 `videos/presentation-narrated.mp4`.
 
    머리말의 발표 자료 링크를 채운 뒤 8을 다시 돌린다.
-10. 브라우저로 열거나 SSH에서 전달한다. SSH는 알려진 실행 환경 정보 또는 `SSH_CONNECTION`, `SSH_CLIENT`, `SSH_TTY`로 판별한다. SSH이면 완료된 보고서 폴더 전체(증거와 자산 포함)를 폴더 옆에 압축하고 목록을 확인한 뒤, 사용자에게 아카이브 절대 경로, 로컬 PC에서 실행할 `scp` 명령, 압축 해제 명령, 압축 푼 폴더 기준 HTML 상대 경로를 알려 준다. 호스트·별칭·사용자·포트는 확인된 값만 쓰고, `SSH_CONNECTION`의 클라이언트 주소로 접속 대상을 추론하지 않는다. 값이 없으면 `<확인된 호스트>` 같은 자리표시자를 두며, 비기본 포트는 `scp -P <포트>`로 표시하고 공백이 있는 경로는 따옴표로 감싼다.
-   ```sh
-   tar -czf "<보고서폴더>.tar.gz" -C "<부모폴더>" "<폴더이름>"
-   tar -tzf "<보고서폴더>.tar.gz"
-   ```
-   ```sh
-   scp "<사용자>@<확인된 호스트 또는 별칭>:<원격 아카이브 절대 경로>" "<로컬 저장 폴더>/"
-   tar -xzf "<로컬 저장 폴더>/<아카이브 파일명>" -C "<압축 해제 폴더>"
-   ```
-   SSH가 아니면 HTML 보고서를 사용자의 기본 브라우저로 연다(macOS `open "<보고서>.html"`, Linux `xdg-open`, Windows `start "" "<보고서>.html"`). 두 경우 모두 보고서 절대 경로, 영상 길이, 위험도와 검토자 확인 지점, 남은 외부 작업을 알려 준다.
+10. 브라우저로 열거나 경로를 알려 준다. SSH는 알려진 실행 환경 정보 또는 `SSH_CONNECTION`, `SSH_CLIENT`, `SSH_TTY`로 판별한다. SSH가 아니면 HTML 보고서를 사용자의 기본 브라우저로 연다(macOS `open "<보고서>.html"`, Linux `xdg-open`, Windows `start "" "<보고서>.html"`). SSH이면 열지 않는다. 두 경우 모두 보고서 절대 경로, 영상 길이, 위험도와 검토자 확인 지점, 남은 외부 작업을 알려 준다.
 
 ## 검수 전용 AI
 
