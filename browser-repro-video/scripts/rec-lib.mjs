@@ -289,7 +289,9 @@ export function saveCaptions(pageOrSession, basePath) {
     return {srt: `${base}.srt`, vtt: `${base}.vtt`, cues};
 }
 
-// 요소에 테두리와 번호를 붙인다. items: [{selector, ok(true=초록/false=빨강), label}] — 번호는 순서대로 [1], [2]...
+// 요소에 윤곽선과 번호를 붙인다. items: [{selector, ok(true=초록/false=빨강), label}] — 번호는 순서대로 [1], [2]...
+// 레이아웃을 바꾸지 않도록 border가 아니라 outline을 쓰고, 번호는 요소 안에 넣지 않고 요소 오른쪽 위에 띄워 매 프레임 따라가게 한다.
+// 요소가 문서에서 빠지면 번호도 지운다(화면이 바뀐 뒤 번호만 남지 않게).
 export async function highlight(page, items) {
     await page.evaluate(items => {
         items.forEach(({selector, ok, label}, i) => {
@@ -299,11 +301,45 @@ export async function highlight(page, items) {
                 el.style.outlineOffset = '1px';
                 const tag = document.createElement('span');
                 tag.textContent = label ?? `[${i + 1}]`;
-                tag.style.cssText = `color:${color};font-weight:700;margin-left:10px;white-space:nowrap`;
-                el.appendChild(tag);
+                tag.style.cssText = `position:fixed;z-index:2147483644;pointer-events:none;color:${color};background:#fff;`
+                    + 'font:700 16px/1.2 sans-serif;padding:1px 4px;white-space:nowrap';
+                document.documentElement.appendChild(tag);
+                const follow = () => {
+                    if (!el.isConnected) {
+                        tag.remove();
+                        return;
+                    }
+                    const r = el.getBoundingClientRect();
+                    tag.style.visibility = r.width || r.height ? 'visible' : 'hidden';
+                    tag.style.left = `${Math.max(0, Math.min(r.right + 8, innerWidth - tag.offsetWidth))}px`;
+                    tag.style.top = `${Math.max(0, r.top)}px`;
+                    requestAnimationFrame(follow);
+                };
+                follow();
             });
         });
     }, items);
+}
+
+// 개인정보 가림. 선택자에 맞는 요소 자체를 흐리게 하는 CSS 규칙이라 요소가 화면에서 사라지면 가림도 같이 사라지고, 다시 나오면 다시 가려진다.
+// 화면 위에 사각형을 덮는 방식은 화면이 바뀌어도 남으므로 쓰지 않는다. 페이지 이동 뒤에도 유지되므로 개인정보가 보이기 전(첫 goto 전)에 한 번 부른다.
+export async function maskPersonalInfo(page, selectors) {
+    const install = css => {
+        const add = () => {
+            const style = document.createElement('style');
+            style.textContent = css;
+            document.documentElement.appendChild(style);
+        };
+        if (document.documentElement) {
+            add();
+        } else {
+            document.addEventListener('DOMContentLoaded', add);
+        }
+    };
+    // 흐림 정도는 그 요소의 글자 크기에 비례(0.4em): 14px 글자는 약 6px, 64px 글자는 약 26px. 읽히지 않으면서 가린 흔적은 보인다.
+    const css = `${selectors.join(',')}{filter:blur(.4em)!important}`;
+    await page.context().addInitScript(install, css);
+    await page.evaluate(install, css);
 }
 
 // 설명 패널. 앱 화면의 핵심을 가리지 않는 위치(css의 top/left/bottom 등)에 둔다.
